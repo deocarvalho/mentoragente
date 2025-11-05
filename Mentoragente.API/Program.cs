@@ -20,6 +20,9 @@ public class Program
 
         // Register Application Layer services
         builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
+        builder.Services.AddScoped<IUserService, UserService>();
+        builder.Services.AddScoped<IMentoriaService, MentoriaService>();
+        builder.Services.AddScoped<IAgentSessionService, AgentSessionService>();
 
         // Register Infrastructure Layer services
         builder.Services.AddHttpClient<IOpenAIAssistantService, OpenAIAssistantService>();

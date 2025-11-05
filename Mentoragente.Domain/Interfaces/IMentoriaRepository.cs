@@ -6,6 +6,7 @@ public interface IMentoriaRepository
 {
     Task<Mentoria?> GetMentoriaByIdAsync(Guid id);
     Task<List<Mentoria>> GetMentoriasByMentorIdAsync(Guid mentorId);
+    Task<List<Mentoria>> GetAllMentoriasAsync();
     Task<Mentoria> CreateMentoriaAsync(Mentoria mentoria);
     Task<Mentoria> UpdateMentoriaAsync(Mentoria mentoria);
 }

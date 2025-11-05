@@ -80,6 +80,29 @@ public class MentoriaRepository : IMentoriaRepository
         }
     }
 
+    public async Task<List<Mentoria>> GetAllMentoriasAsync()
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<Mentoria>()
+                .Select("*")
+                .Get();
+
+            return response.Models;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving all mentorias");
+            throw new InvalidOperationException($"Failed to retrieve mentorias: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving all mentorias");
+            throw;
+        }
+    }
+
     public async Task<Mentoria> CreateMentoriaAsync(Mentoria mentoria)
     {
         try

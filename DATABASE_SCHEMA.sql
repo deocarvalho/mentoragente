@@ -161,12 +161,15 @@ CREATE TRIGGER update_agent_session_data_updated_at
 -- ROW LEVEL SECURITY (RLS) - Optional
 -- ============================================
 
--- Enable RLS if needed (commented out for now)
--- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE mentorias ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE agent_sessions ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE agent_session_data ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+-- RLS is disabled by default. To enable RLS with proper policies,
+-- run the ENABLE_RLS.sql script after this schema is created.
+--
+-- Note: If you're using ServiceRoleKey in your backend (which is
+-- recommended), enabling RLS won't affect your application as
+-- service_role bypasses RLS automatically. However, it's still
+-- recommended for security best practices.
+--
+-- Run: ENABLE_RLS.sql after this schema is created.
 
 -- ============================================
 -- COMMENTS
