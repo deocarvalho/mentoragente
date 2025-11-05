@@ -38,14 +38,13 @@ Mentoragente/
 Execute the SQL schema in Supabase:
 
 ```sql
--- 1. Run: source/Mentoragente/DATABASE_SCHEMA.sql
--- 2. Run: source/Mentoragente/ENABLE_RLS.sql (recommended for security)
+-- Run: source/Mentoragente/DATABASE_SCHEMA.sql
 ```
 
-**Important:** After creating the schema, enable Row Level Security (RLS) by running `ENABLE_RLS.sql`. This script:
-- Enables RLS on all tables
-- Creates policies for service role access
-- Maintains security best practices
+**Important:** This single SQL file includes:
+- Complete database schema (tables, indexes, triggers)
+- Row Level Security (RLS) enabled on all tables
+- Security policies for service role access
 
 **Note:** Your backend uses ServiceRoleKey, which bypasses RLS automatically, so enabling RLS won't break your application. It's recommended for security and compliance.
 
