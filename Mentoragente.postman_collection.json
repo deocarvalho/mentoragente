@@ -1,0 +1,903 @@
+{
+	"info": {
+		"_postman_id": "mentoragente-api-collection",
+		"name": "Mentoragente API",
+		"description": "Complete API collection for Mentoragente - Multi-tenant SaaS platform for AI-powered WhatsApp assistants",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the API is running"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users?page=1&pageSize=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (starts at 1)"
+								},
+								{
+									"key": "pageSize",
+									"value": "10",
+									"description": "Items per page (max 100)"
+								}
+							]
+						},
+						"description": "Get all users with pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Get a specific user by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by Phone",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/phone/5511999999999",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"phone",
+								"5511999999999"
+							]
+						},
+						"description": "Get user by phone number (digits only, no +)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"user_id\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phoneNumber\": \"5511999999999\",\n    \"name\": \"João Silva\",\n    \"email\": \"joao@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						},
+						"description": "Create a new user"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"João Silva Updated\",\n    \"email\": \"joao.updated@example.com\",\n    \"status\": \"Active\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Update user information"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Soft delete user (marks as Inactive)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Mentorias",
+			"item": [
+				{
+					"name": "Get Mentoria by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mentorias/{{mentoria_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mentorias",
+								"{{mentoria_id}}"
+							]
+						},
+						"description": "Get a specific mentoria by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mentorias by Mentor ID (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mentorias/mentor/{{mentor_id}}?page=1&pageSize=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mentorias",
+								"mentor",
+								"{{mentor_id}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get all mentorias for a specific mentor with pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Mentorias (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mentorias/active?page=1&pageSize=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mentorias",
+								"active"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get all active mentorias with pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Mentoria",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"mentoria_id\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mentorId\": \"{{mentor_id}}\",\n    \"nome\": \"Nina - Descoberta de Oferta\",\n    \"assistantId\": \"asst_YOUR_ASSISTANT_ID_HERE\",\n    \"duracaoDias\": 30,\n    \"descricao\": \"Programa de 30 dias para descobrir sua oferta única de mentoria\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mentorias",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mentorias"
+							]
+						},
+						"description": "Create a new mentoria"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Mentoria",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nome\": \"Nina - Descoberta de Oferta (Updated)\",\n    \"duracaoDias\": 60,\n    \"descricao\": \"Programa atualizado de 60 dias\",\n    \"status\": \"Active\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mentorias/{{mentoria_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mentorias",
+								"{{mentoria_id}}"
+							]
+						},
+						"description": "Update mentoria information"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Mentoria (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mentorias/{{mentoria_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mentorias",
+								"{{mentoria_id}}"
+							]
+						},
+						"description": "Soft delete mentoria (marks as Archived)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Agent Sessions",
+			"item": [
+				{
+					"name": "Get Agent Session by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/{{agent_session_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"{{agent_session_id}}"
+							]
+						},
+						"description": "Get a specific agent session by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent Session by User and Mentoria",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}/mentoria/{{mentoria_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"user",
+								"{{user_id}}",
+								"mentoria",
+								"{{mentoria_id}}"
+							]
+						},
+						"description": "Get agent session for a specific user and mentoria"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Agent Session",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}/mentoria/{{mentoria_id}}/active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"user",
+								"{{user_id}}",
+								"mentoria",
+								"{{mentoria_id}}",
+								"active"
+							]
+						},
+						"description": "Get active agent session for a specific user and mentoria"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent Sessions by User ID (Paginated)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}?page=1&pageSize=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"user",
+								"{{user_id}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "pageSize",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get all agent sessions for a user with pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Agent Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"agent_session_id\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"{{user_id}}\",\n    \"mentoriaId\": \"{{mentoria_id}}\",\n    \"aiContextId\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions"
+							]
+						},
+						"description": "Create a new agent session"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Agent Session",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"Active\",\n    \"aiContextId\": \"thread_ABC123\",\n    \"lastInteraction\": \"2025-01-15T10:00:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/{{agent_session_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"{{agent_session_id}}"
+							]
+						},
+						"description": "Update agent session"
+					},
+					"response": []
+				},
+				{
+					"name": "Expire Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/{{agent_session_id}}/expire",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"{{agent_session_id}}",
+								"expire"
+							]
+						},
+						"description": "Mark agent session as expired"
+					},
+					"response": []
+				},
+				{
+					"name": "Pause Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/{{agent_session_id}}/pause",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"{{agent_session_id}}",
+								"pause"
+							]
+						},
+						"description": "Pause agent session"
+					},
+					"response": []
+				},
+				{
+					"name": "Resume Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{api_key}}",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/agentsessions/{{agent_session_id}}/resume",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"agentsessions",
+								"{{agent_session_id}}",
+								"resume"
+							]
+						},
+						"description": "Resume paused agent session"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "WhatsApp Webhook",
+			"item": [
+				{
+					"name": "Receive WhatsApp Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"messages.upsert\",\n    \"data\": {\n        \"key\": {\n            \"remoteJid\": \"5511999999999@s.whatsapp.net\",\n            \"fromMe\": false\n        },\n        \"message\": {\n            \"conversation\": \"Olá, como você está?\"\n        }\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/WhatsAppWebhook?mentoriaId={{mentoria_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"WhatsAppWebhook"
+							],
+							"query": [
+								{
+									"key": "mentoriaId",
+									"value": "{{mentoria_id}}",
+									"description": "Required: Mentoria ID to process the message"
+								}
+							]
+						},
+						"description": "Receive and process WhatsApp webhook message. Requires mentoriaId query parameter."
+					},
+					"response": []
+				},
+				{
+					"name": "Receive WhatsApp Message (Ignore Self)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event\": \"messages.upsert\",\n    \"data\": {\n        \"key\": {\n            \"remoteJid\": \"5511999999999@s.whatsapp.net\",\n            \"fromMe\": true\n        },\n        \"message\": {\n            \"conversation\": \"Test message\"\n        }\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/WhatsAppWebhook?mentoriaId={{mentoria_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"WhatsAppWebhook"
+							],
+							"query": [
+								{
+									"key": "mentoriaId",
+									"value": "{{mentoria_id}}"
+								}
+							]
+						},
+						"description": "Test webhook with fromMe=true (should be ignored)"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "YOUR_API_KEY_HERE",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "mentor_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "mentoria_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "agent_session_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+
