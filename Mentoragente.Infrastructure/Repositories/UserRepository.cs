@@ -119,6 +119,57 @@ public class UserRepository : IUserRepository
         }
     }
 
+    public async Task<List<User>> GetAllUsersAsync(int skip = 0, int take = 10)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<User>()
+                .Select("*")
+                .Order("created_at", Ordering.Descending)
+                .Range(skip, skip + take - 1)
+                .Get();
+
+            return response.Models;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving users");
+            throw new InvalidOperationException($"Failed to retrieve users: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving users");
+            throw;
+        }
+    }
+
+    public async Task<int> GetTotalUsersCountAsync()
+    {
+        try
+        {
+            // Note: Supabase Postgrest doesn't support count directly in the same way
+            // We'll get all users and count them, or use a raw query
+            // For now, we'll get a limited set and estimate
+            var response = await _supabaseClient
+                .From<User>()
+                .Select("*")
+                .Get();
+
+            return response.Models.Count;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while counting users");
+            throw new InvalidOperationException($"Failed to count users: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while counting users");
+            throw;
+        }
+    }
+
     public async Task<User> UpdateUserAsync(User user)
     {
         try

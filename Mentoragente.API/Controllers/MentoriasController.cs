@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Mentoragente.Application.Services;
-using Mentoragente.Domain.Entities;
-using Mentoragente.Domain.Enums;
+using Mentoragente.Domain.DTOs;
+using Mentoragente.Application.Mappings;
+using FluentValidation;
 
 namespace Mentoragente.API.Controllers;
 
@@ -11,30 +12,30 @@ public class MentoriasController : ControllerBase
 {
     private readonly IMentoriaService _mentoriaService;
     private readonly ILogger<MentoriasController> _logger;
+    private readonly IValidator<CreateMentoriaRequestDto> _createValidator;
+    private readonly IValidator<UpdateMentoriaRequestDto> _updateValidator;
 
     public MentoriasController(
         IMentoriaService mentoriaService,
-        ILogger<MentoriasController> logger)
+        ILogger<MentoriasController> logger,
+        IValidator<CreateMentoriaRequestDto> createValidator,
+        IValidator<UpdateMentoriaRequestDto> updateValidator)
     {
         _mentoriaService = mentoriaService;
         _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
-    /// <summary>
-    /// Get mentoria by ID
-    /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<Mentoria>> GetMentoriaById(Guid id)
+    public async Task<ActionResult<MentoriaResponseDto>> GetMentoriaById(Guid id)
     {
         try
         {
             var mentoria = await _mentoriaService.GetMentoriaByIdAsync(id);
             if (mentoria == null)
-            {
                 return NotFound(new { message = $"Mentoria with ID {id} not found" });
-            }
-
-            return Ok(mentoria);
+            return Ok(mentoria.ToDto());
         }
         catch (Exception ex)
         {
@@ -43,16 +44,13 @@ public class MentoriasController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all mentorias by mentor ID
-    /// </summary>
     [HttpGet("mentor/{mentorId}")]
-    public async Task<ActionResult<List<Mentoria>>> GetMentoriasByMentorId(Guid mentorId)
+    public async Task<ActionResult<List<MentoriaResponseDto>>> GetMentoriasByMentorId(Guid mentorId)
     {
         try
         {
             var mentorias = await _mentoriaService.GetMentoriasByMentorIdAsync(mentorId);
-            return Ok(mentorias);
+            return Ok(mentorias.Select(m => m.ToDto()).ToList());
         }
         catch (Exception ex)
         {
@@ -61,16 +59,13 @@ public class MentoriasController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all active mentorias
-    /// </summary>
     [HttpGet("active")]
-    public async Task<ActionResult<List<Mentoria>>> GetActiveMentorias()
+    public async Task<ActionResult<List<MentoriaResponseDto>>> GetActiveMentorias()
     {
         try
         {
             var mentorias = await _mentoriaService.GetActiveMentoriasAsync();
-            return Ok(mentorias);
+            return Ok(mentorias.Select(m => m.ToDto()).ToList());
         }
         catch (Exception ex)
         {
@@ -79,27 +74,19 @@ public class MentoriasController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Create a new mentoria
-    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<Mentoria>> CreateMentoria([FromBody] CreateMentoriaRequest request)
+    public async Task<ActionResult<MentoriaResponseDto>> CreateMentoria([FromBody] CreateMentoriaRequestDto request)
     {
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            var validationResult = await _createValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
 
             var mentoria = await _mentoriaService.CreateMentoriaAsync(
-                request.MentorId,
-                request.Nome,
-                request.AssistantId,
-                request.DuracaoDias,
-                request.Descricao);
+                request.MentorId, request.Nome, request.AssistantId, request.DuracaoDias, request.Descricao);
 
-            return CreatedAtAction(nameof(GetMentoriaById), new { id = mentoria.Id }, mentoria);
+            return CreatedAtAction(nameof(GetMentoriaById), new { id = mentoria.Id }, mentoria.ToDto());
         }
         catch (InvalidOperationException ex)
         {
@@ -116,23 +103,20 @@ public class MentoriasController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Update mentoria
-    /// </summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<Mentoria>> UpdateMentoria(Guid id, [FromBody] UpdateMentoriaRequest request)
+    public async Task<ActionResult<MentoriaResponseDto>> UpdateMentoria(Guid id, [FromBody] UpdateMentoriaRequestDto request)
     {
         try
         {
-            var mentoria = await _mentoriaService.UpdateMentoriaAsync(
-                id,
-                request.Nome,
-                request.AssistantId,
-                request.DuracaoDias,
-                request.Descricao,
-                request.Status);
+            var validationResult = await _updateValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
 
-            return Ok(mentoria);
+            var mentoria = await _mentoriaService.UpdateMentoriaAsync(
+                id, request.Nome, request.AssistantId, request.DuracaoDias, request.Descricao,
+                EntityToDtoMappings.ParseMentoriaStatus(request.Status));
+
+            return Ok(mentoria.ToDto());
         }
         catch (InvalidOperationException ex)
         {
@@ -145,9 +129,6 @@ public class MentoriasController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Delete mentoria (soft delete - marks as Archived)
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteMentoria(Guid id)
     {
@@ -155,10 +136,7 @@ public class MentoriasController : ControllerBase
         {
             var deleted = await _mentoriaService.DeleteMentoriaAsync(id);
             if (!deleted)
-            {
                 return NotFound(new { message = $"Mentoria with ID {id} not found" });
-            }
-
             return NoContent();
         }
         catch (Exception ex)
@@ -168,22 +146,3 @@ public class MentoriasController : ControllerBase
         }
     }
 }
-
-public class CreateMentoriaRequest
-{
-    public Guid MentorId { get; set; }
-    public string Nome { get; set; } = string.Empty;
-    public string AssistantId { get; set; } = string.Empty;
-    public int DuracaoDias { get; set; }
-    public string? Descricao { get; set; }
-}
-
-public class UpdateMentoriaRequest
-{
-    public string? Nome { get; set; }
-    public string? AssistantId { get; set; }
-    public int? DuracaoDias { get; set; }
-    public string? Descricao { get; set; }
-    public MentoriaStatus? Status { get; set; }
-}
-

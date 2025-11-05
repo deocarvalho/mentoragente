@@ -3,6 +3,8 @@ using Mentoragente.Application.Services;
 using Mentoragente.Infrastructure.Services;
 using Mentoragente.Infrastructure.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 namespace Mentoragente.API;
 
@@ -17,6 +19,15 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.AddHealthChecks();
+
+        // FluentValidation
+        builder.Services.AddValidatorsFromAssemblyContaining<Mentoragente.Application.Validators.CreateUserRequestValidator>();
+        builder.Services.AddFluentValidationAutoValidation();
+
+        // Authentication (API Key - optional, can be enabled per controller)
+        builder.Services.AddAuthentication("ApiKey")
+            .AddScheme<Mentoragente.API.Middleware.ApiKeyAuthenticationOptions, Mentoragente.API.Middleware.ApiKeyAuthenticationHandler>(
+                "ApiKey", options => { });
 
         // Register Application Layer services
         builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
@@ -50,6 +61,7 @@ public class Program
         // Disable HTTPS redirection for Render/cloud deployment
         // app.UseHttpsRedirection();
 
+        app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
 

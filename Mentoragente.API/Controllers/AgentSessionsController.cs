@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Mentoragente.Application.Services;
-using Mentoragente.Domain.Entities;
-using Mentoragente.Domain.Enums;
+using Mentoragente.Domain.DTOs;
+using Mentoragente.Application.Mappings;
+using FluentValidation;
 
 namespace Mentoragente.API.Controllers;
 
@@ -11,30 +12,30 @@ public class AgentSessionsController : ControllerBase
 {
     private readonly IAgentSessionService _agentSessionService;
     private readonly ILogger<AgentSessionsController> _logger;
+    private readonly IValidator<CreateAgentSessionRequestDto> _createValidator;
+    private readonly IValidator<UpdateAgentSessionRequestDto> _updateValidator;
 
     public AgentSessionsController(
         IAgentSessionService agentSessionService,
-        ILogger<AgentSessionsController> logger)
+        ILogger<AgentSessionsController> logger,
+        IValidator<CreateAgentSessionRequestDto> createValidator,
+        IValidator<UpdateAgentSessionRequestDto> updateValidator)
     {
         _agentSessionService = agentSessionService;
         _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
-    /// <summary>
-    /// Get agent session by ID
-    /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<AgentSession>> GetAgentSessionById(Guid id)
+    public async Task<ActionResult<AgentSessionResponseDto>> GetAgentSessionById(Guid id)
     {
         try
         {
             var session = await _agentSessionService.GetAgentSessionByIdAsync(id);
             if (session == null)
-            {
                 return NotFound(new { message = $"Agent session with ID {id} not found" });
-            }
-
-            return Ok(session);
+            return Ok(session.ToDto());
         }
         catch (Exception ex)
         {
@@ -43,89 +44,68 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get agent session by user ID and mentoria ID
-    /// </summary>
     [HttpGet("user/{userId}/mentoria/{mentoriaId}")]
-    public async Task<ActionResult<AgentSession>> GetAgentSession(Guid userId, Guid mentoriaId)
+    public async Task<ActionResult<AgentSessionResponseDto>> GetAgentSession(Guid userId, Guid mentoriaId)
     {
         try
         {
             var session = await _agentSessionService.GetAgentSessionAsync(userId, mentoriaId);
             if (session == null)
-            {
-                return NotFound(new { message = $"Agent session not found for user {userId} and mentoria {mentoriaId}" });
-            }
-
-            return Ok(session);
+                return NotFound(new { message = $"Agent session not found" });
+            return Ok(session.ToDto());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+            _logger.LogError(ex, "Error getting agent session");
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
-    /// <summary>
-    /// Get active agent session by user ID and mentoria ID
-    /// </summary>
     [HttpGet("user/{userId}/mentoria/{mentoriaId}/active")]
-    public async Task<ActionResult<AgentSession>> GetActiveAgentSession(Guid userId, Guid mentoriaId)
+    public async Task<ActionResult<AgentSessionResponseDto>> GetActiveAgentSession(Guid userId, Guid mentoriaId)
     {
         try
         {
             var session = await _agentSessionService.GetActiveAgentSessionAsync(userId, mentoriaId);
             if (session == null)
-            {
-                return NotFound(new { message = $"Active agent session not found for user {userId} and mentoria {mentoriaId}" });
-            }
-
-            return Ok(session);
+                return NotFound(new { message = $"Active agent session not found" });
+            return Ok(session.ToDto());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting active agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+            _logger.LogError(ex, "Error getting active agent session");
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
-    /// <summary>
-    /// Get all agent sessions by user ID
-    /// </summary>
     [HttpGet("user/{userId}")]
-    public async Task<ActionResult<List<AgentSession>>> GetAgentSessionsByUserId(Guid userId)
+    public async Task<ActionResult<List<AgentSessionResponseDto>>> GetAgentSessionsByUserId(Guid userId)
     {
         try
         {
             var sessions = await _agentSessionService.GetAgentSessionsByUserIdAsync(userId);
-            return Ok(sessions);
+            return Ok(sessions.Select(s => s.ToDto()).ToList());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting agent sessions for user {UserId}", userId);
+            _logger.LogError(ex, "Error getting agent sessions");
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
-    /// <summary>
-    /// Create a new agent session
-    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<AgentSession>> CreateAgentSession([FromBody] CreateAgentSessionRequest request)
+    public async Task<ActionResult<AgentSessionResponseDto>> CreateAgentSession([FromBody] CreateAgentSessionRequestDto request)
     {
         try
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            var validationResult = await _createValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
 
             var session = await _agentSessionService.CreateAgentSessionAsync(
-                request.UserId,
-                request.MentoriaId,
-                request.AIContextId);
+                request.UserId, request.MentoriaId, request.AIContextId);
 
-            return CreatedAtAction(nameof(GetAgentSessionById), new { id = session.Id }, session);
+            return CreatedAtAction(nameof(GetAgentSessionById), new { id = session.Id }, session.ToDto());
         }
         catch (InvalidOperationException ex)
         {
@@ -138,21 +118,20 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Update agent session
-    /// </summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<AgentSession>> UpdateAgentSession(Guid id, [FromBody] UpdateAgentSessionRequest request)
+    public async Task<ActionResult<AgentSessionResponseDto>> UpdateAgentSession(Guid id, [FromBody] UpdateAgentSessionRequestDto request)
     {
         try
         {
-            var session = await _agentSessionService.UpdateAgentSessionAsync(
-                id,
-                request.Status,
-                request.AIContextId,
-                request.LastInteraction);
+            var validationResult = await _updateValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
 
-            return Ok(session);
+            var session = await _agentSessionService.UpdateAgentSessionAsync(
+                id, EntityToDtoMappings.ParseAgentSessionStatus(request.Status),
+                request.AIContextId, request.LastInteraction);
+
+            return Ok(session.ToDto());
         }
         catch (InvalidOperationException ex)
         {
@@ -165,9 +144,6 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Expire agent session
-    /// </summary>
     [HttpPost("{id}/expire")]
     public async Task<ActionResult> ExpireSession(Guid id)
     {
@@ -175,10 +151,7 @@ public class AgentSessionsController : ControllerBase
         {
             var expired = await _agentSessionService.ExpireSessionAsync(id);
             if (!expired)
-            {
-                return NotFound(new { message = $"Agent session with ID {id} not found" });
-            }
-
+                return NotFound(new { message = $"Agent session not found" });
             return Ok(new { message = "Session expired successfully" });
         }
         catch (Exception ex)
@@ -188,9 +161,6 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Pause agent session
-    /// </summary>
     [HttpPost("{id}/pause")]
     public async Task<ActionResult> PauseSession(Guid id)
     {
@@ -198,10 +168,7 @@ public class AgentSessionsController : ControllerBase
         {
             var paused = await _agentSessionService.PauseSessionAsync(id);
             if (!paused)
-            {
-                return NotFound(new { message = $"Agent session with ID {id} not found" });
-            }
-
+                return NotFound(new { message = $"Agent session not found" });
             return Ok(new { message = "Session paused successfully" });
         }
         catch (Exception ex)
@@ -211,9 +178,6 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Resume agent session
-    /// </summary>
     [HttpPost("{id}/resume")]
     public async Task<ActionResult> ResumeSession(Guid id)
     {
@@ -221,10 +185,7 @@ public class AgentSessionsController : ControllerBase
         {
             var resumed = await _agentSessionService.ResumeSessionAsync(id);
             if (!resumed)
-            {
-                return NotFound(new { message = $"Agent session with ID {id} not found" });
-            }
-
+                return NotFound(new { message = $"Agent session not found" });
             return Ok(new { message = "Session resumed successfully" });
         }
         catch (Exception ex)
@@ -234,18 +195,3 @@ public class AgentSessionsController : ControllerBase
         }
     }
 }
-
-public class CreateAgentSessionRequest
-{
-    public Guid UserId { get; set; }
-    public Guid MentoriaId { get; set; }
-    public string? AIContextId { get; set; }
-}
-
-public class UpdateAgentSessionRequest
-{
-    public AgentSessionStatus? Status { get; set; }
-    public string? AIContextId { get; set; }
-    public DateTime? LastInteraction { get; set; }
-}
-

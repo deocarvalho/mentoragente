@@ -1,6 +1,7 @@
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
 using Mentoragente.Domain.Interfaces;
+using Mentoragente.Application.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Application.Services;
@@ -9,6 +10,7 @@ public interface IUserService
 {
     Task<User?> GetUserByIdAsync(Guid id);
     Task<User?> GetUserByPhoneAsync(string phoneNumber);
+    Task<PagedResult<User>> GetUsersAsync(int page = 1, int pageSize = 10);
     Task<User> CreateUserAsync(string phoneNumber, string name, string? email = null);
     Task<User> UpdateUserAsync(Guid id, string? name = null, string? email = null, UserStatus? status = null);
     Task<bool> DeleteUserAsync(Guid id);
@@ -43,6 +45,17 @@ public class UserService : IUserService
 
         _logger.LogInformation("Getting user by phone: {PhoneNumber}", phoneNumber);
         return await _userRepository.GetUserByPhoneAsync(phoneNumber);
+    }
+
+    public async Task<PagedResult<User>> GetUsersAsync(int page = 1, int pageSize = 10)
+    {
+        _logger.LogInformation("Getting users - Page: {Page}, PageSize: {PageSize}", page, pageSize);
+        
+        var skip = (page - 1) * pageSize;
+        var users = await _userRepository.GetAllUsersAsync(skip, pageSize);
+        var total = await _userRepository.GetTotalUsersCountAsync();
+
+        return PagedResult<User>.Create(users, total, page, pageSize);
     }
 
     public async Task<User> CreateUserAsync(string phoneNumber, string name, string? email = null)
