@@ -80,6 +80,56 @@ public class MentoriaRepository : IMentoriaRepository
         }
     }
 
+    public async Task<List<Mentoria>> GetMentoriasByMentorIdAsync(Guid mentorId, int skip, int take)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<Mentoria>()
+                .Select("*")
+                .Filter("mentor_id", Operator.Equals, mentorId)
+                .Order("created_at", Ordering.Descending)
+                .Range(skip, skip + take - 1)
+                .Get();
+
+            return response.Models;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving paginated mentorias for mentor {MentorId}", mentorId);
+            throw new InvalidOperationException($"Failed to retrieve mentorias: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving paginated mentorias for mentor {MentorId}", mentorId);
+            throw;
+        }
+    }
+
+    public async Task<int> GetMentoriasCountByMentorIdAsync(Guid mentorId)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<Mentoria>()
+                .Select("*")
+                .Filter("mentor_id", Operator.Equals, mentorId)
+                .Get();
+
+            return response.Models.Count;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while counting mentorias for mentor {MentorId}", mentorId);
+            throw new InvalidOperationException($"Failed to count mentorias: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while counting mentorias for mentor {MentorId}", mentorId);
+            throw;
+        }
+    }
+
     public async Task<List<Mentoria>> GetAllMentoriasAsync()
     {
         try
@@ -99,6 +149,56 @@ public class MentoriaRepository : IMentoriaRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while retrieving all mentorias");
+            throw;
+        }
+    }
+
+    public async Task<List<Mentoria>> GetActiveMentoriasAsync(int skip, int take)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<Mentoria>()
+                .Select("*")
+                .Filter("status", Operator.Equals, "Active")
+                .Order("created_at", Ordering.Descending)
+                .Range(skip, skip + take - 1)
+                .Get();
+
+            return response.Models;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving active mentorias");
+            throw new InvalidOperationException($"Failed to retrieve active mentorias: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving active mentorias");
+            throw;
+        }
+    }
+
+    public async Task<int> GetActiveMentoriasCountAsync()
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<Mentoria>()
+                .Select("*")
+                .Filter("status", Operator.Equals, "Active")
+                .Get();
+
+            return response.Models.Count;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while counting active mentorias");
+            throw new InvalidOperationException($"Failed to count active mentorias: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while counting active mentorias");
             throw;
         }
     }

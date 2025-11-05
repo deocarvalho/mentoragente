@@ -1,6 +1,7 @@
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
 using Mentoragente.Domain.Interfaces;
+using Mentoragente.Application.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Application.Services;
@@ -10,6 +11,7 @@ public interface IAgentSessionService
     Task<AgentSession?> GetAgentSessionByIdAsync(Guid id);
     Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentoriaId);
     Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId);
+    Task<PagedResult<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId, int page = 1, int pageSize = 10);
     Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentoriaId);
     Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentoriaId, string? aiContextId = null);
     Task<AgentSession> UpdateAgentSessionAsync(
@@ -60,6 +62,15 @@ public class AgentSessionService : IAgentSessionService
     {
         _logger.LogInformation("Getting all agent sessions for user {UserId}", userId);
         return await _agentSessionRepository.GetAgentSessionsByUserIdAsync(userId);
+    }
+
+    public async Task<PagedResult<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId, int page = 1, int pageSize = 10)
+    {
+        _logger.LogInformation("Getting agent sessions for user {UserId} - Page: {Page}, PageSize: {PageSize}", userId, page, pageSize);
+        var skip = (page - 1) * pageSize;
+        var sessions = await _agentSessionRepository.GetAgentSessionsByUserIdAsync(userId, skip, pageSize);
+        var total = await _agentSessionRepository.GetAgentSessionsCountByUserIdAsync(userId);
+        return PagedResult<AgentSession>.Create(sessions, total, page, pageSize);
     }
 
     public async Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentoriaId)

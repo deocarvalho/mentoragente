@@ -10,6 +10,7 @@ namespace Mentoragente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// [Authorize] // Uncomment to require API key authentication
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;

@@ -8,6 +8,7 @@ namespace Mentoragente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// [Authorize] // Uncomment to require API key authentication
 public class MentoriasController : ControllerBase
 {
     private readonly IMentoriaService _mentoriaService;
@@ -45,12 +46,27 @@ public class MentoriasController : ControllerBase
     }
 
     [HttpGet("mentor/{mentorId}")]
-    public async Task<ActionResult<List<MentoriaResponseDto>>> GetMentoriasByMentorId(Guid mentorId)
+    public async Task<ActionResult<MentoriaListResponseDto>> GetMentoriasByMentorId(Guid mentorId, [FromQuery] PaginationRequestDto pagination)
     {
         try
         {
-            var mentorias = await _mentoriaService.GetMentoriasByMentorIdAsync(mentorId);
-            return Ok(mentorias.Select(m => m.ToDto()).ToList());
+            var validator = new Mentoragente.Application.Validators.PaginationRequestValidator();
+            var validationResult = await validator.ValidateAsync(pagination);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
+
+            var result = await _mentoriaService.GetMentoriasByMentorIdAsync(mentorId, pagination.Page, pagination.PageSize);
+            
+            var response = new MentoriaListResponseDto
+            {
+                Mentorias = result.Items.Select(m => m.ToDto()).ToList(),
+                Total = result.Total,
+                Page = result.Page,
+                PageSize = result.PageSize,
+                TotalPages = result.TotalPages
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -60,12 +76,27 @@ public class MentoriasController : ControllerBase
     }
 
     [HttpGet("active")]
-    public async Task<ActionResult<List<MentoriaResponseDto>>> GetActiveMentorias()
+    public async Task<ActionResult<MentoriaListResponseDto>> GetActiveMentorias([FromQuery] PaginationRequestDto pagination)
     {
         try
         {
-            var mentorias = await _mentoriaService.GetActiveMentoriasAsync();
-            return Ok(mentorias.Select(m => m.ToDto()).ToList());
+            var validator = new Mentoragente.Application.Validators.PaginationRequestValidator();
+            var validationResult = await validator.ValidateAsync(pagination);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
+
+            var result = await _mentoriaService.GetActiveMentoriasAsync(pagination.Page, pagination.PageSize);
+            
+            var response = new MentoriaListResponseDto
+            {
+                Mentorias = result.Items.Select(m => m.ToDto()).ToList(),
+                Total = result.Total,
+                Page = result.Page,
+                PageSize = result.PageSize,
+                TotalPages = result.TotalPages
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {

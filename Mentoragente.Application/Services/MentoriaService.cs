@@ -1,6 +1,7 @@
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
 using Mentoragente.Domain.Interfaces;
+using Mentoragente.Application.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Application.Services;
@@ -9,7 +10,9 @@ public interface IMentoriaService
 {
     Task<Mentoria?> GetMentoriaByIdAsync(Guid id);
     Task<List<Mentoria>> GetMentoriasByMentorIdAsync(Guid mentorId);
+    Task<PagedResult<Mentoria>> GetMentoriasByMentorIdAsync(Guid mentorId, int page = 1, int pageSize = 10);
     Task<List<Mentoria>> GetActiveMentoriasAsync();
+    Task<PagedResult<Mentoria>> GetActiveMentoriasAsync(int page = 1, int pageSize = 10);
     Task<Mentoria> CreateMentoriaAsync(
         Guid mentorId,
         string nome,
@@ -54,11 +57,29 @@ public class MentoriaService : IMentoriaService
         return await _mentoriaRepository.GetMentoriasByMentorIdAsync(mentorId);
     }
 
+    public async Task<PagedResult<Mentoria>> GetMentoriasByMentorIdAsync(Guid mentorId, int page = 1, int pageSize = 10)
+    {
+        _logger.LogInformation("Getting mentorias for mentor: {MentorId}, Page: {Page}, PageSize: {PageSize}", mentorId, page, pageSize);
+        var skip = (page - 1) * pageSize;
+        var mentorias = await _mentoriaRepository.GetMentoriasByMentorIdAsync(mentorId, skip, pageSize);
+        var total = await _mentoriaRepository.GetMentoriasCountByMentorIdAsync(mentorId);
+        return PagedResult<Mentoria>.Create(mentorias, total, page, pageSize);
+    }
+
     public async Task<List<Mentoria>> GetActiveMentoriasAsync()
     {
         _logger.LogInformation("Getting active mentorias");
         var allMentorias = await _mentoriaRepository.GetAllMentoriasAsync();
         return allMentorias.Where(m => m.Status == MentoriaStatus.Active).ToList();
+    }
+
+    public async Task<PagedResult<Mentoria>> GetActiveMentoriasAsync(int page = 1, int pageSize = 10)
+    {
+        _logger.LogInformation("Getting active mentorias - Page: {Page}, PageSize: {PageSize}", page, pageSize);
+        var skip = (page - 1) * pageSize;
+        var mentorias = await _mentoriaRepository.GetActiveMentoriasAsync(skip, pageSize);
+        var total = await _mentoriaRepository.GetActiveMentoriasCountAsync();
+        return PagedResult<Mentoria>.Create(mentorias, total, page, pageSize);
     }
 
     public async Task<Mentoria> CreateMentoriaAsync(

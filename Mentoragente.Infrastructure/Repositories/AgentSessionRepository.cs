@@ -133,6 +133,56 @@ public class AgentSessionRepository : IAgentSessionRepository
         }
     }
 
+    public async Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId, int skip, int take)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<AgentSession>()
+                .Select("*")
+                .Filter("user_id", Operator.Equals, userId)
+                .Order("created_at", Ordering.Descending)
+                .Range(skip, skip + take - 1)
+                .Get();
+
+            return response.Models;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving paginated agent sessions for user {UserId}", userId);
+            throw new InvalidOperationException($"Failed to retrieve agent sessions: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving paginated agent sessions for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    public async Task<int> GetAgentSessionsCountByUserIdAsync(Guid userId)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<AgentSession>()
+                .Select("*")
+                .Filter("user_id", Operator.Equals, userId)
+                .Get();
+
+            return response.Models.Count;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while counting agent sessions for user {UserId}", userId);
+            throw new InvalidOperationException($"Failed to count agent sessions: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while counting agent sessions for user {UserId}", userId);
+            throw;
+        }
+    }
+
     public async Task<AgentSession> CreateAgentSessionAsync(AgentSession session)
     {
         try

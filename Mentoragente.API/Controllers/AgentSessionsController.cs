@@ -8,6 +8,7 @@ namespace Mentoragente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// [Authorize] // Uncomment to require API key authentication
 public class AgentSessionsController : ControllerBase
 {
     private readonly IAgentSessionService _agentSessionService;
@@ -79,16 +80,31 @@ public class AgentSessionsController : ControllerBase
     }
 
     [HttpGet("user/{userId}")]
-    public async Task<ActionResult<List<AgentSessionResponseDto>>> GetAgentSessionsByUserId(Guid userId)
+    public async Task<ActionResult<AgentSessionListResponseDto>> GetAgentSessionsByUserId(Guid userId, [FromQuery] PaginationRequestDto pagination)
     {
         try
         {
-            var sessions = await _agentSessionService.GetAgentSessionsByUserIdAsync(userId);
-            return Ok(sessions.Select(s => s.ToDto()).ToList());
+            var validator = new Mentoragente.Application.Validators.PaginationRequestValidator();
+            var validationResult = await validator.ValidateAsync(pagination);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.Errors);
+
+            var result = await _agentSessionService.GetAgentSessionsByUserIdAsync(userId, pagination.Page, pagination.PageSize);
+            
+            var response = new AgentSessionListResponseDto
+            {
+                Sessions = result.Items.Select(s => s.ToDto()).ToList(),
+                Total = result.Total,
+                Page = result.Page,
+                PageSize = result.PageSize,
+                TotalPages = result.TotalPages
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting agent sessions");
+            _logger.LogError(ex, "Error getting agent sessions for user {UserId}", userId);
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
