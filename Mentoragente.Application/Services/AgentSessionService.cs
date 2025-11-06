@@ -9,11 +9,11 @@ namespace Mentoragente.Application.Services;
 public interface IAgentSessionService
 {
     Task<AgentSession?> GetAgentSessionByIdAsync(Guid id);
-    Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentoriaId);
+    Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentorshipId);
     Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId);
     Task<PagedResult<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId, int page = 1, int pageSize = 10);
-    Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentoriaId);
-    Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentoriaId, string? aiContextId = null);
+    Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentorshipId);
+    Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentorshipId, string? aiContextId = null);
     Task<AgentSession> UpdateAgentSessionAsync(
         Guid id,
         AgentSessionStatus? status = null,
@@ -29,20 +29,20 @@ public class AgentSessionService : IAgentSessionService
     private readonly IAgentSessionRepository _agentSessionRepository;
     private readonly IAgentSessionDataRepository _agentSessionDataRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IMentoriaRepository _mentoriaRepository;
+    private readonly IMentorshipRepository _mentorshipRepository;
     private readonly ILogger<AgentSessionService> _logger;
 
     public AgentSessionService(
         IAgentSessionRepository agentSessionRepository,
         IAgentSessionDataRepository agentSessionDataRepository,
         IUserRepository userRepository,
-        IMentoriaRepository mentoriaRepository,
+        IMentorshipRepository mentorshipRepository,
         ILogger<AgentSessionService> logger)
     {
         _agentSessionRepository = agentSessionRepository;
         _agentSessionDataRepository = agentSessionDataRepository;
         _userRepository = userRepository;
-        _mentoriaRepository = mentoriaRepository;
+        _mentorshipRepository = mentorshipRepository;
         _logger = logger;
     }
 
@@ -52,10 +52,10 @@ public class AgentSessionService : IAgentSessionService
         return await _agentSessionRepository.GetAgentSessionByIdAsync(id);
     }
 
-    public async Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentoriaId)
+    public async Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentorshipId)
     {
-        _logger.LogInformation("Getting agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
-        return await _agentSessionRepository.GetAgentSessionAsync(userId, mentoriaId);
+        _logger.LogInformation("Getting agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
+        return await _agentSessionRepository.GetAgentSessionAsync(userId, mentorshipId);
     }
 
     public async Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId)
@@ -73,15 +73,15 @@ public class AgentSessionService : IAgentSessionService
         return PagedResult<AgentSession>.Create(sessions, total, page, pageSize);
     }
 
-    public async Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentoriaId)
+    public async Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentorshipId)
     {
-        _logger.LogInformation("Getting active agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
-        return await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentoriaId);
+        _logger.LogInformation("Getting active agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
+        return await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentorshipId);
     }
 
-    public async Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentoriaId, string? aiContextId = null)
+    public async Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentorshipId, string? aiContextId = null)
     {
-        // Validar se usuário existe
+        // Validate user exists
         var user = await _userRepository.GetUserByIdAsync(userId);
         if (user == null)
         {
@@ -89,27 +89,27 @@ public class AgentSessionService : IAgentSessionService
             throw new InvalidOperationException($"User with ID {userId} not found");
         }
 
-        // Validar se mentoria existe
-        var mentoria = await _mentoriaRepository.GetMentoriaByIdAsync(mentoriaId);
-        if (mentoria == null)
+        // Validate mentorship exists
+        var mentorship = await _mentorshipRepository.GetMentorshipByIdAsync(mentorshipId);
+        if (mentorship == null)
         {
-            _logger.LogError("Mentoria {MentoriaId} not found", mentoriaId);
-            throw new InvalidOperationException($"Mentoria with ID {mentoriaId} not found");
+            _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
+            throw new InvalidOperationException($"Mentorship with ID {mentorshipId} not found");
         }
 
-        // Verificar se já existe sessão ativa
-        var existingSession = await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentoriaId);
+        // Check if active session already exists
+        var existingSession = await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentorshipId);
         if (existingSession != null)
         {
-            _logger.LogWarning("Active session already exists for user {UserId} and mentoria {MentoriaId}: {SessionId}", 
-                userId, mentoriaId, existingSession.Id);
-            throw new InvalidOperationException("Active session already exists for this user and mentoria");
+            _logger.LogWarning("Active session already exists for user {UserId} and mentorship {MentorshipId}: {SessionId}", 
+                userId, mentorshipId, existingSession.Id);
+            throw new InvalidOperationException("Active session already exists for this user and mentorship");
         }
 
         var session = new AgentSession
         {
             UserId = userId,
-            MentoriaId = mentoriaId,
+            MentorshipId = mentorshipId,
             AIProvider = AIProvider.OpenAI,
             AIContextId = aiContextId,
             Status = AgentSessionStatus.Active,
@@ -117,15 +117,15 @@ public class AgentSessionService : IAgentSessionService
             TotalMessages = 0
         };
 
-        _logger.LogInformation("Creating new agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+        _logger.LogInformation("Creating new agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
         var createdSession = await _agentSessionRepository.CreateAgentSessionAsync(session);
 
-        // Criar AgentSessionData
+        // Create AgentSessionData
         var sessionData = new AgentSessionData
         {
             AgentSessionId = createdSession.Id,
             AccessStartDate = DateTime.UtcNow,
-            AccessEndDate = DateTime.UtcNow.AddDays(mentoria.DuracaoDias),
+            AccessEndDate = DateTime.UtcNow.AddDays(mentorship.DurationDays),
             ProgressPercentage = 0,
             ReportGenerated = false
         };

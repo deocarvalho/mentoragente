@@ -10,8 +10,8 @@ public class CreateAgentSessionRequestValidator : AbstractValidator<CreateAgentS
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("User ID is required");
 
-        RuleFor(x => x.MentoriaId)
-            .NotEmpty().WithMessage("Mentoria ID is required");
+        RuleFor(x => x.MentorshipId)
+            .NotEmpty().WithMessage("Mentorship ID is required");
 
         RuleFor(x => x.AIContextId)
             .MaximumLength(200).WithMessage("AI Context ID cannot exceed 200 characters")

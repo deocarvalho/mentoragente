@@ -13,8 +13,8 @@ public class AgentSession : BaseModel
     [Column("user_id")]
     public Guid UserId { get; set; }
     
-    [Column("mentoria_id")]
-    public Guid MentoriaId { get; set; }
+    [Column("mentorship_id")]
+    public Guid MentorshipId { get; set; }
     
     [Column("ai_provider")]
     public AIProvider AIProvider { get; set; } = AIProvider.OpenAI;

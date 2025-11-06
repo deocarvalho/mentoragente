@@ -16,7 +16,7 @@ public class WhatsAppWebhookControllerTests
 {
     private readonly Mock<IMessageProcessor> _mockMessageProcessor;
     private readonly Mock<IEvolutionAPIService> _mockEvolutionAPIService;
-    private readonly Mock<IMentoriaRepository> _mockMentoriaRepository;
+    private readonly Mock<IMentorshipRepository> _mockMentorshipRepository;
     private readonly Mock<ILogger<WhatsAppWebhookController>> _mockLogger;
     private readonly WhatsAppWebhookController _controller;
 
@@ -24,13 +24,13 @@ public class WhatsAppWebhookControllerTests
     {
         _mockMessageProcessor = new Mock<IMessageProcessor>();
         _mockEvolutionAPIService = new Mock<IEvolutionAPIService>();
-        _mockMentoriaRepository = new Mock<IMentoriaRepository>();
+        _mockMentorshipRepository = new Mock<IMentorshipRepository>();
         _mockLogger = new Mock<ILogger<WhatsAppWebhookController>>();
 
         _controller = new WhatsAppWebhookController(
             _mockMessageProcessor.Object,
             _mockEvolutionAPIService.Object,
-            _mockMentoriaRepository.Object,
+            _mockMentorshipRepository.Object,
             _mockLogger.Object);
     }
 
@@ -160,7 +160,7 @@ public class WhatsAppWebhookControllerTests
     public async Task ReceiveMessage_ShouldHandleEvolutionAPIServiceFailure()
     {
         // Arrange
-        var mentoriaId = Guid.NewGuid();
+        var mentorshipId = Guid.NewGuid();
         var webhook = new WhatsAppWebhookDto
         {
             Event = "messages.upsert",
@@ -175,13 +175,13 @@ public class WhatsAppWebhookControllerTests
             }
         };
 
-        _mockMentoriaRepository.Setup(x => x.GetMentoriaByIdAsync(It.IsAny<Guid>()))
-            .ReturnsAsync(new Mentoria { Id = mentoriaId });
+        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Mentorship { Id = mentorshipId });
 
         _mockMessageProcessor.Setup(x => x.ProcessMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>()))
             .ReturnsAsync("Response");
 
-        _mockEvolutionAPIService.Setup(x => x.SendMessageAsync(It.IsAny<string>(), It.IsAny<string>()))
+        _mockEvolutionAPIService.Setup(x => x.SendMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>()))
             .ReturnsAsync(false);
 
         // Act & Assert

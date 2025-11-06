@@ -13,18 +13,18 @@ public class WhatsAppWebhookController : ControllerBase
 {
     private readonly IMessageProcessor _messageProcessor;
     private readonly IEvolutionAPIService _evolutionAPIService;
-    private readonly IMentoriaRepository _mentoriaRepository;
+    private readonly IMentorshipRepository _mentorshipRepository;
     private readonly ILogger<WhatsAppWebhookController> _logger;
 
     public WhatsAppWebhookController(
         IMessageProcessor messageProcessor,
         IEvolutionAPIService evolutionAPIService,
-        IMentoriaRepository mentoriaRepository,
+        IMentorshipRepository mentorshipRepository,
         ILogger<WhatsAppWebhookController> logger)
     {
         _messageProcessor = messageProcessor;
         _evolutionAPIService = evolutionAPIService;
-        _mentoriaRepository = mentoriaRepository;
+        _mentorshipRepository = mentorshipRepository;
         _logger = logger;
     }
 
@@ -63,14 +63,14 @@ public class WhatsAppWebhookController : ControllerBase
 
                 _logger.LogInformation("Processing message from {PhoneNumber}: {Message}", phoneNumber, messageText);
 
-                // Buscar mentoria (via query param ou primeira ativa)
-                var mentoriaId = await GetMentoriaIdFromRequestAsync();
+                // Get mentorship (via query param or first active)
+                var mentorshipId = await GetMentorshipIdFromRequestAsync();
 
-                // Processar mensagem usando MessageProcessor
-                var chatResponse = await _messageProcessor.ProcessMessageAsync(phoneNumber, messageText, mentoriaId);
+                // Process message using MessageProcessor
+                var chatResponse = await _messageProcessor.ProcessMessageAsync(phoneNumber, messageText, mentorshipId);
 
-                // Enviar resposta de volta via WhatsApp
-                var success = await _evolutionAPIService.SendMessageAsync(phoneNumber, chatResponse);
+                // Send response back via WhatsApp
+                var success = await _evolutionAPIService.SendMessageAsync(phoneNumber, chatResponse, mentorshipId);
 
                 if (success)
                 {
@@ -112,25 +112,25 @@ public class WhatsAppWebhookController : ControllerBase
         return new string(phonePart.Where(char.IsDigit).ToArray());
     }
 
-    private async Task<Guid> GetMentoriaIdFromRequestAsync()
+    private async Task<Guid> GetMentorshipIdFromRequestAsync()
     {
-        // 1. Tentar buscar via query parameter
-        var mentoriaIdParam = Request.Query["mentoriaId"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(mentoriaIdParam) && Guid.TryParse(mentoriaIdParam, out var mentoriaId))
+        // 1. Try to get via query parameter
+        var mentorshipIdParam = Request.Query["mentorshipId"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(mentorshipIdParam) && Guid.TryParse(mentorshipIdParam, out var mentorshipId))
         {
-            var mentoria = await _mentoriaRepository.GetMentoriaByIdAsync(mentoriaId);
-            if (mentoria != null)
+            var mentorship = await _mentorshipRepository.GetMentorshipByIdAsync(mentorshipId);
+            if (mentorship != null)
             {
-                return mentoriaId;
+                return mentorshipId;
             }
         }
 
-        // 2. Se não fornecido, buscar primeira mentoria ativa (fallback)
-        // TODO: Melhorar isso para buscar baseado em configuração ou mapping
-        // Por enquanto, retornar erro se não encontrar
+        // 2. If not provided, get first active mentorship (fallback)
+        // TODO: Improve this to search based on configuration or mapping
+        // For now, return error if not found
         throw new InvalidOperationException(
-            "MentoriaId must be provided via query parameter '?mentoriaId=xxx'. " +
-            "Multiple mentorias support coming soon.");
+            "MentorshipId must be provided via query parameter '?mentorshipId=xxx'. " +
+            "Multiple mentorships support coming soon.");
     }
 }
 

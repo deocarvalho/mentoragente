@@ -38,7 +38,7 @@ public class AgentSessionDataRepository : IAgentSessionDataRepository
             var response = await _supabaseClient
                 .From<AgentSessionData>()
                 .Select("*")
-                .Filter("agent_session_id", Supabase.Postgrest.Constants.Operator.Equals, agentSessionId)
+                .Filter("agent_session_id", Supabase.Postgrest.Constants.Operator.Equals, agentSessionId.ToString())
                 .Get();
 
             return response.Models.FirstOrDefault();

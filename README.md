@@ -5,7 +5,7 @@ SaaS platform for mentors to create AI-powered WhatsApp assistants for their men
 ## 🚀 Features
 
 - 🤖 AI-powered WhatsApp assistants using OpenAI Assistants API
-- 👥 Multi-tenant architecture (multiple mentors, multiple mentorias)
+- 👥 Multi-tenant architecture (multiple mentors, multiple mentorships)
 - 📱 WhatsApp integration via Evolution API
 - 🎯 Structured mentorship programs with configurable duration
 - 💾 Persistent conversation context (Thread persistence)
@@ -28,7 +28,7 @@ Mentoragente/
 - .NET 8.0 SDK
 - Supabase PostgreSQL database
 - OpenAI API key
-- Evolution API instance (WhatsApp)
+- Evolution API instance (WhatsApp) - **Recommended: v2.1.1**
 - Docker (optional, for deployment)
 
 ## ⚙️ Configuration
@@ -60,9 +60,7 @@ Configure in `appsettings.Development.json` or environment variables:
     "AssistantId": "your-assistant-id"
   },
   "EvolutionAPI": {
-    "BaseUrl": "https://your-evolution-api.com",
-    "ApiKey": "your-api-key",
-    "InstanceName": "your-instance-name"
+    "BaseUrl": "https://your-evolution-api.com"
   },
   "Supabase": {
     "Url": "https://your-project.supabase.co",
@@ -71,20 +69,24 @@ Configure in `appsettings.Development.json` or environment variables:
 }
 ```
 
-### 3. Create Mentoria
+### 3. Create Mentorship
 
-Before using the webhook, create a mentoria in the database:
+Before using the webhook, create a mentorship in the database:
 
 ```sql
-INSERT INTO mentorias (nome, mentor_id, assistant_id, duracao_dias, descricao)
+INSERT INTO mentorships (name, mentor_id, assistant_id, duration_days, description, evolution_api_key, evolution_instance_name)
 VALUES (
-    'Nina - Descoberta de Oferta de Mentoria',
+    'Nina - Mentorship Offer Discovery',
     'mentor-user-id-here',
     'your-openai-assistant-id',
     30,
-    'Programa de 30 dias para descobrir sua oferta única de mentoria'
+    '30-day program to discover your unique mentorship offer',
+    'your-evolution-api-key',
+    'your-instance-name'
 );
 ```
+
+**Note:** Each mentorship now requires `evolution_api_key` and `evolution_instance_name` to be configured. These are stored in the database and can be updated without redeploying the application.
 
 ## 🚀 Running Locally
 
@@ -136,8 +138,8 @@ https://your-api.com/api/webhook?mentoriaId={MENTORIA_ID}
 ### Tables
 
 - `users` - Pessoas físicas (phone_number como identificador único)
-- `mentorias` - Cadastro de mentorias
-- `agent_sessions` - Sessões de agentes (vincula User + Mentoria)
+- `mentorships` - Mentorship programs
+- `agent_sessions` - Agent sessions (links User + Mentorship)
 - `agent_session_data` - Dados da sessão (propriedades comuns)
 - `conversations` - Histórico de mensagens
 
@@ -146,14 +148,14 @@ See `DATABASE_SCHEMA.sql` for complete schema.
 ## 🔄 Flow
 
 1. **User sends WhatsApp message** → Evolution API webhook
-2. **WhatsAppWebhookController** → Extracts phone number, finds mentoria
+2. **WhatsAppWebhookController** → Extracts phone number, finds mentorship
 3. **MessageProcessor** → Creates/gets User, AgentSession, validates access
 4. **OpenAI Assistant** → Processes message with Thread context
 5. **Response sent** → Via Evolution API back to WhatsApp
 
 ## 📝 API Endpoints
 
-- `POST /api/webhook?mentoriaId={guid}` - WhatsApp webhook
+- `POST /api/webhook?mentorshipId={guid}` - WhatsApp webhook
 - `GET /health` - Health check
 - `GET /swagger` - API documentation
 
@@ -174,12 +176,21 @@ docker build -t mentoragente .
 docker run -p 8080:8080 mentoragente
 ```
 
+## 🚀 Render Deployment
+
+See [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md) for complete deployment guide.
+
+**Quick Start:**
+- **Evolution API:** Use Docker image `atendai/evolution-api:v2.1.1` (latest stable)
+- **Mentoragente API:** Deploy using `Mentoragente.API/Dockerfile`
+- Configure environment variables as documented
+
 ## 📚 Project Structure
 
 ```
 Mentoragente/
 ├── Mentoragente.Domain/          # Domain entities, interfaces, enums
-│   ├── Entities/                 # User, Mentoria, AgentSession, etc.
+│   ├── Entities/                 # User, Mentorship, AgentSession, etc.
 │   ├── Interfaces/               # Repository and service interfaces
 │   ├── Enums/                    # UserStatus, AgentSessionStatus, etc.
 │   └── Models/                   # DTOs and models

@@ -4,7 +4,7 @@ public class AgentSessionResponseDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
-    public Guid MentoriaId { get; set; }
+    public Guid MentorshipId { get; set; }
     public string AIProvider { get; set; } = string.Empty;
     public string? AIContextId { get; set; }
     public string Status { get; set; } = string.Empty;
@@ -17,7 +17,7 @@ public class AgentSessionResponseDto
 public class CreateAgentSessionRequestDto
 {
     public Guid UserId { get; set; }
-    public Guid MentoriaId { get; set; }
+    public Guid MentorshipId { get; set; }
     public string? AIContextId { get; set; }
 }
 

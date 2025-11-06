@@ -16,7 +16,7 @@ public class AgentSessionTests
         // Assert
         session.Id.Should().NotBeEmpty();
         session.UserId.Should().BeEmpty();
-        session.MentoriaId.Should().BeEmpty();
+        session.MentorshipId.Should().BeEmpty();
         session.AIProvider.Should().Be(AIProvider.OpenAI);
         session.AIContextId.Should().BeNull();
         session.Status.Should().Be(AgentSessionStatus.Active);
@@ -32,7 +32,7 @@ public class AgentSessionTests
         // Arrange
         var id = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var mentoriaId = Guid.NewGuid();
+        var mentorshipId = Guid.NewGuid();
         var aiContextId = "thread_ABC123";
         var status = AgentSessionStatus.Active;
         var lastInteraction = DateTime.UtcNow.AddMinutes(-5);
@@ -43,7 +43,7 @@ public class AgentSessionTests
         {
             Id = id,
             UserId = userId,
-            MentoriaId = mentoriaId,
+            MentorshipId = mentorshipId,
             AIContextId = aiContextId,
             Status = status,
             LastInteraction = lastInteraction,
@@ -53,7 +53,7 @@ public class AgentSessionTests
         // Assert
         session.Id.Should().Be(id);
         session.UserId.Should().Be(userId);
-        session.MentoriaId.Should().Be(mentoriaId);
+        session.MentorshipId.Should().Be(mentorshipId);
         session.AIContextId.Should().Be(aiContextId);
         session.Status.Should().Be(status);
         session.LastInteraction.Should().Be(lastInteraction);

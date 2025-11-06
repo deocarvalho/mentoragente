@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
 using Mentoragente.Domain.Interfaces;
+using Mentoragente.Domain.Models;
 using Supabase.Postgrest.Exceptions;
 using static Supabase.Postgrest.Constants;
 
@@ -33,15 +34,15 @@ public class AgentSessionRepository : IAgentSessionRepository
         _logger = logger;
     }
 
-    public async Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentoriaId)
+    public async Task<AgentSession?> GetAgentSessionAsync(Guid userId, Guid mentorshipId)
     {
         try
         {
             var response = await _supabaseClient
                 .From<AgentSession>()
                 .Select("*")
-                .Filter("user_id", Operator.Equals, userId)
-                .Filter("mentoria_id", Operator.Equals, mentoriaId)
+                .Filter("user_id", Operator.Equals, userId.ToString())
+                .Filter("mentorship_id", Operator.Equals, mentorshipId.ToString())
                 .Order("created_at", Ordering.Descending)
                 .Get();
 
@@ -49,25 +50,25 @@ public class AgentSessionRepository : IAgentSessionRepository
         }
         catch (PostgrestException ex)
         {
-            _logger.LogError(ex, "Postgrest error while retrieving agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+            _logger.LogError(ex, "Postgrest error while retrieving agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
             throw new InvalidOperationException($"Failed to retrieve agent session: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error while retrieving agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+            _logger.LogError(ex, "Unexpected error while retrieving agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
             throw;
         }
     }
 
-    public async Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentoriaId)
+    public async Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentorshipId)
     {
         try
         {
             var response = await _supabaseClient
                 .From<AgentSession>()
                 .Select("*")
-                .Filter("user_id", Operator.Equals, userId)
-                .Filter("mentoria_id", Operator.Equals, mentoriaId)
+                .Filter("user_id", Operator.Equals, userId.ToString())
+                .Filter("mentorship_id", Operator.Equals, mentorshipId.ToString())
                 .Filter("status", Operator.Equals, AgentSessionStatus.Active)
                 .Get();
 
@@ -75,12 +76,92 @@ public class AgentSessionRepository : IAgentSessionRepository
         }
         catch (PostgrestException ex)
         {
-            _logger.LogError(ex, "Postgrest error while retrieving active agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+            _logger.LogError(ex, "Postgrest error while retrieving active agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
             throw new InvalidOperationException($"Failed to retrieve active agent session: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error while retrieving active agent session for user {UserId} and mentoria {MentoriaId}", userId, mentoriaId);
+            _logger.LogError(ex, "Unexpected error while retrieving active agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
+            throw;
+        }
+    }
+
+    public async Task<AgentSessionWithData?> GetActiveAgentSessionWithDataAsync(Guid userId, Guid mentorshipId)
+    {
+        try
+        {
+            var sessionResponse = await _supabaseClient
+                .From<AgentSession>()
+                .Select("*")
+                .Filter("user_id", Operator.Equals, userId.ToString())
+                .Filter("mentorship_id", Operator.Equals, mentorshipId.ToString())
+                .Filter("status", Operator.Equals, AgentSessionStatus.Active)
+                .Get();
+
+            var session = sessionResponse.Models.FirstOrDefault();
+            if (session == null)
+                return null;
+
+            var dataResponse = await _supabaseClient
+                .From<AgentSessionData>()
+                .Select("*")
+                .Filter("agent_session_id", Operator.Equals, session.Id.ToString())
+                .Get();
+
+            return new AgentSessionWithData
+            {
+                Session = session,
+                Data = dataResponse.Models.FirstOrDefault()
+            };
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving active agent session with data for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
+            throw new InvalidOperationException($"Failed to retrieve active agent session with data: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving active agent session with data for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
+            throw;
+        }
+    }
+
+    public async Task<AgentSessionWithData?> GetAgentSessionWithDataAsync(Guid userId, Guid mentorshipId)
+    {
+        try
+        {
+            var sessionResponse = await _supabaseClient
+                .From<AgentSession>()
+                .Select("*")
+                .Filter("user_id", Operator.Equals, userId.ToString())
+                .Filter("mentorship_id", Operator.Equals, mentorshipId.ToString())
+                .Order("created_at", Ordering.Descending)
+                .Get();
+
+            var session = sessionResponse.Models.FirstOrDefault();
+            if (session == null)
+                return null;
+
+            var dataResponse = await _supabaseClient
+                .From<AgentSessionData>()
+                .Select("*")
+                .Filter("agent_session_id", Operator.Equals, session.Id.ToString())
+                .Get();
+
+            return new AgentSessionWithData
+            {
+                Session = session,
+                Data = dataResponse.Models.FirstOrDefault()
+            };
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving agent session with data for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
+            throw new InvalidOperationException($"Failed to retrieve agent session with data: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving agent session with data for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
             throw;
         }
     }
@@ -92,7 +173,7 @@ public class AgentSessionRepository : IAgentSessionRepository
             var response = await _supabaseClient
                 .From<AgentSession>()
                 .Select("*")
-                .Filter("id", Operator.Equals, id)
+                .Filter("id", Operator.Equals, id.ToString())
                 .Get();
 
             return response.Models.FirstOrDefault();
@@ -116,7 +197,7 @@ public class AgentSessionRepository : IAgentSessionRepository
             var response = await _supabaseClient
                 .From<AgentSession>()
                 .Select("*")
-                .Filter("user_id", Operator.Equals, userId)
+                .Filter("user_id", Operator.Equals, userId.ToString())
                 .Get();
 
             return response.Models;
@@ -140,7 +221,7 @@ public class AgentSessionRepository : IAgentSessionRepository
             var response = await _supabaseClient
                 .From<AgentSession>()
                 .Select("*")
-                .Filter("user_id", Operator.Equals, userId)
+                .Filter("user_id", Operator.Equals, userId.ToString())
                 .Order("created_at", Ordering.Descending)
                 .Range(skip, skip + take - 1)
                 .Get();
@@ -166,7 +247,7 @@ public class AgentSessionRepository : IAgentSessionRepository
             var response = await _supabaseClient
                 .From<AgentSession>()
                 .Select("*")
-                .Filter("user_id", Operator.Equals, userId)
+                .Filter("user_id", Operator.Equals, userId.ToString())
                 .Get();
 
             return response.Models.Count;
@@ -196,7 +277,7 @@ public class AgentSessionRepository : IAgentSessionRepository
                 .Insert(session);
 
             var created = response.Models.FirstOrDefault() ?? session;
-            _logger.LogInformation("Created agent session {AgentSessionId} for user {UserId} and mentoria {MentoriaId}", created.Id, session.UserId, session.MentoriaId);
+            _logger.LogInformation("Created agent session {AgentSessionId} for user {UserId} and mentorship {MentorshipId}", created.Id, session.UserId, session.MentorshipId);
             return created;
         }
         catch (PostgrestException ex)

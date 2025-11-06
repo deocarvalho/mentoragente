@@ -69,7 +69,7 @@ public class UserRepository : IUserRepository
             var response = await _supabaseClient
                 .From<User>()
                 .Select("*")
-                .Filter("id", Operator.Equals, id)
+                .Filter("id", Operator.Equals, id.ToString())
                 .Get();
 
             return response.Models.FirstOrDefault();

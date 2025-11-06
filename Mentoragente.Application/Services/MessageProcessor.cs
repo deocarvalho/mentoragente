@@ -7,13 +7,13 @@ namespace Mentoragente.Application.Services;
 
 public interface IMessageProcessor
 {
-    Task<string> ProcessMessageAsync(string phoneNumber, string messageText, Guid mentoriaId);
+    Task<string> ProcessMessageAsync(string phoneNumber, string messageText, Guid mentorshipId);
 }
 
 public class MessageProcessor : IMessageProcessor
 {
     private readonly IUserRepository _userRepository;
-    private readonly IMentoriaRepository _mentoriaRepository;
+    private readonly IMentorshipRepository _mentorshipRepository;
     private readonly IAgentSessionRepository _agentSessionRepository;
     private readonly IAgentSessionDataRepository _agentSessionDataRepository;
     private readonly IConversationRepository _conversationRepository;
@@ -22,7 +22,7 @@ public class MessageProcessor : IMessageProcessor
 
     public MessageProcessor(
         IUserRepository userRepository,
-        IMentoriaRepository mentoriaRepository,
+        IMentorshipRepository mentorshipRepository,
         IAgentSessionRepository agentSessionRepository,
         IAgentSessionDataRepository agentSessionDataRepository,
         IConversationRepository conversationRepository,
@@ -30,7 +30,7 @@ public class MessageProcessor : IMessageProcessor
         ILogger<MessageProcessor> logger)
     {
         _userRepository = userRepository;
-        _mentoriaRepository = mentoriaRepository;
+        _mentorshipRepository = mentorshipRepository;
         _agentSessionRepository = agentSessionRepository;
         _agentSessionDataRepository = agentSessionDataRepository;
         _conversationRepository = conversationRepository;
@@ -38,94 +38,102 @@ public class MessageProcessor : IMessageProcessor
         _logger = logger;
     }
 
-    public async Task<string> ProcessMessageAsync(string phoneNumber, string messageText, Guid mentoriaId)
+    public async Task<string> ProcessMessageAsync(string phoneNumber, string messageText, Guid mentorshipId)
     {
         try
         {
-            // Validar mensagem vazia
+            // Validate empty message
             if (string.IsNullOrWhiteSpace(messageText))
             {
                 _logger.LogWarning("Received empty message from {PhoneNumber}", phoneNumber);
-                return "Desculpe, não consegui entender sua mensagem. Por favor, envie uma mensagem com texto.";
+                return "Sorry, I couldn't understand your message. Please send a message with text.";
             }
 
-            _logger.LogInformation("Processing message from {PhoneNumber} for mentoria {MentoriaId}: {Message}", phoneNumber, mentoriaId, messageText);
+            _logger.LogInformation("Processing message from {PhoneNumber} for mentorship {MentorshipId}: {Message}", phoneNumber, mentorshipId, messageText);
 
-            // 1. Buscar ou criar User
+            // 1. Find or create User
             var user = await _userRepository.GetUserByPhoneAsync(phoneNumber);
             if (user == null)
             {
                 user = new User
                 {
                     PhoneNumber = phoneNumber,
-                    Name = "Cliente WhatsApp",
+                    Name = "WhatsApp Client",
                     Status = UserStatus.Active
                 };
                 user = await _userRepository.CreateUserAsync(user);
                 _logger.LogInformation("Created new user {UserId} for phone {PhoneNumber}", user.Id, phoneNumber);
             }
 
-            // 2. Buscar Mentoria
-            var mentoria = await _mentoriaRepository.GetMentoriaByIdAsync(mentoriaId);
-            if (mentoria == null)
+            // 2. Find Mentorship
+            var mentorship = await _mentorshipRepository.GetMentorshipByIdAsync(mentorshipId);
+            if (mentorship == null)
             {
-                _logger.LogError("Mentoria {MentoriaId} not found", mentoriaId);
-                throw new InvalidOperationException($"Mentoria {mentoriaId} not found");
+                _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
+                throw new InvalidOperationException($"Mentorship {mentorshipId} not found");
             }
 
-            // 3. Buscar ou criar AgentSession
-            var agentSession = await _agentSessionRepository.GetActiveAgentSessionAsync(user.Id, mentoriaId);
+            // 3. Find or create AgentSession with data (optimized: fetch both in one go)
+            var sessionWithData = await _agentSessionRepository.GetActiveAgentSessionWithDataAsync(user.Id, mentorshipId);
+            AgentSession? agentSession = null;
+            AgentSessionData? accessData = null;
+
+            if (sessionWithData != null)
+            {
+                agentSession = sessionWithData.Session;
+                accessData = sessionWithData.Data;
+            }
+            else
+            {
+                // Check if any session exists (even if not active)
+                var existingSessionWithData = await _agentSessionRepository.GetAgentSessionWithDataAsync(user.Id, mentorshipId);
+                
+                if (existingSessionWithData != null)
+                {
+                    agentSession = existingSessionWithData.Session;
+                    accessData = existingSessionWithData.Data;
+                    
+                    if (accessData != null && DateTime.UtcNow > accessData.AccessEndDate)
+                    {
+                        // Access expired
+                        agentSession.Status = AgentSessionStatus.Expired;
+                        await _agentSessionRepository.UpdateAgentSessionAsync(agentSession);
+                        _logger.LogWarning("Access expired for user {UserId} in mentorship {MentorshipId}", user.Id, mentorshipId);
+                        return "Your access period to this mentorship has ended. Please contact to renew.";
+                    }
+                    else if (accessData != null && DateTime.UtcNow <= accessData.AccessEndDate)
+                    {
+                        // Reactivate session
+                        agentSession.Status = AgentSessionStatus.Active;
+                        agentSession = await _agentSessionRepository.UpdateAgentSessionAsync(agentSession);
+                    }
+                }
+            }
+
+            // Create new session if not found
             if (agentSession == null)
             {
-                // Verificar se existe sessão expirada
-                var existingSession = await _agentSessionRepository.GetAgentSessionAsync(user.Id, mentoriaId);
-                
-                if (existingSession != null)
+                agentSession = new AgentSession
                 {
-                    // Verificar acesso
-                    var sessionData = await _agentSessionDataRepository.GetAgentSessionDataAsync(existingSession.Id);
-                    if (sessionData != null && DateTime.UtcNow > sessionData.AccessEndDate)
-                    {
-                        // Acesso expirado
-                        existingSession.Status = AgentSessionStatus.Expired;
-                        await _agentSessionRepository.UpdateAgentSessionAsync(existingSession);
-                        _logger.LogWarning("Access expired for user {UserId} in mentoria {MentoriaId}", user.Id, mentoriaId);
-                        return "Seu período de acesso a esta mentoria terminou. Entre em contato para renovar.";
-                    }
-                    else if (sessionData != null && DateTime.UtcNow <= sessionData.AccessEndDate)
-                    {
-                        // Reativar sessão
-                        existingSession.Status = AgentSessionStatus.Active;
-                        agentSession = await _agentSessionRepository.UpdateAgentSessionAsync(existingSession);
-                    }
-                }
+                    UserId = user.Id,
+                    MentorshipId = mentorshipId,
+                    Status = AgentSessionStatus.Active
+                };
+                agentSession = await _agentSessionRepository.CreateAgentSessionAsync(agentSession);
 
-                // Criar nova sessão se não encontrou
-                if (agentSession == null)
+                // Create AgentSessionData
+                accessData = new AgentSessionData
                 {
-                    agentSession = new AgentSession
-                    {
-                        UserId = user.Id,
-                        MentoriaId = mentoriaId,
-                        Status = AgentSessionStatus.Active
-                    };
-                    agentSession = await _agentSessionRepository.CreateAgentSessionAsync(agentSession);
-
-                    // Criar AgentSessionData
-                    var sessionData = new AgentSessionData
-                    {
-                        AgentSessionId = agentSession.Id,
-                        AccessStartDate = DateTime.UtcNow,
-                        AccessEndDate = DateTime.UtcNow.AddDays(mentoria.DuracaoDias),
-                        ProgressPercentage = 0
-                    };
-                    await _agentSessionDataRepository.CreateAgentSessionDataAsync(sessionData);
-                    _logger.LogInformation("Created new agent session {AgentSessionId} for user {UserId} and mentoria {MentoriaId}", agentSession.Id, user.Id, mentoriaId);
-                }
+                    AgentSessionId = agentSession.Id,
+                    AccessStartDate = DateTime.UtcNow,
+                    AccessEndDate = DateTime.UtcNow.AddDays(mentorship.DurationDays),
+                    ProgressPercentage = 0
+                };
+                accessData = await _agentSessionDataRepository.CreateAgentSessionDataAsync(accessData);
+                _logger.LogInformation("Created new agent session {AgentSessionId} for user {UserId} and mentorship {MentorshipId}", agentSession.Id, user.Id, mentorshipId);
             }
 
-            // 4. Validar acesso
-            var accessData = await _agentSessionDataRepository.GetAgentSessionDataAsync(agentSession.Id);
+            // 4. Validate access (accessData already loaded above)
             if (accessData == null)
             {
                 _logger.LogError("AgentSessionData not found for session {AgentSessionId}", agentSession.Id);
@@ -136,44 +144,45 @@ public class MessageProcessor : IMessageProcessor
             {
                 agentSession.Status = AgentSessionStatus.Expired;
                 await _agentSessionRepository.UpdateAgentSessionAsync(agentSession);
-                return "Seu período de acesso a esta mentoria terminou. Entre em contato para renovar.";
+                return "Your access period to this mentorship has ended. Please contact to renew.";
             }
 
-            // 5. Criar Thread ID se não existir
+            // 5. Create Thread ID if it doesn't exist
             if (string.IsNullOrEmpty(agentSession.AIContextId))
             {
                 var threadId = await _openAIAssistantService.CreateThreadAsync();
                 agentSession.AIContextId = threadId;
-                agentSession = await _agentSessionRepository.UpdateAgentSessionAsync(agentSession);
+                // Will be updated together with other session updates at the end
                 _logger.LogInformation("Created OpenAI thread {ThreadId} for agent session {AgentSessionId}", threadId, agentSession.Id);
             }
 
-            // 6. Adicionar mensagem do usuário ao histórico local
+            // 6. Add user message to local history
             await _conversationRepository.AddMessageAsync(agentSession.Id, "user", messageText);
 
-            // 7. Enviar mensagem para OpenAI Assistant
+            // 7. Send message to OpenAI Assistant
             if (string.IsNullOrEmpty(agentSession.AIContextId))
             {
                 throw new InvalidOperationException($"AgentSession {agentSession.Id} has no AIContextId after validation");
             }
             await _openAIAssistantService.AddUserMessageAsync(agentSession.AIContextId, messageText);
 
-            // 8. Buscar resposta do assistente
-            var responseText = await _openAIAssistantService.RunAssistantAsync(agentSession.AIContextId, mentoria.AssistantId);
+            // 8. Get assistant response
+            var responseText = await _openAIAssistantService.RunAssistantAsync(agentSession.AIContextId, mentorship.AssistantId);
 
-            // 9. Adicionar resposta ao histórico local
+            // 9. Add response to local history
             await _conversationRepository.AddMessageAsync(agentSession.Id, "assistant", responseText);
 
-            // 10. Atualizar sessão
+            // 10. Batch update session and progress (optimized: update both in parallel)
             agentSession.LastInteraction = DateTime.UtcNow;
             agentSession.TotalMessages += 2; // user + assistant
-            await _agentSessionRepository.UpdateAgentSessionAsync(agentSession);
+            accessData.ProgressPercentage = Math.Min(100, (agentSession.TotalMessages * 100) / (mentorship.DurationDays * 10)); // Estimate
 
-            // 11. Atualizar progresso (opcional - pode calcular baseado em mensagens)
-            accessData.ProgressPercentage = Math.Min(100, (agentSession.TotalMessages * 100) / (mentoria.DuracaoDias * 10)); // Estimativa
-            await _agentSessionDataRepository.UpdateAgentSessionDataAsync(accessData);
+            // Update both in parallel to reduce total time
+            var updateSessionTask = _agentSessionRepository.UpdateAgentSessionAsync(agentSession);
+            var updateDataTask = _agentSessionDataRepository.UpdateAgentSessionDataAsync(accessData);
+            await Task.WhenAll(updateSessionTask, updateDataTask);
 
-            _logger.LogInformation("Successfully processed message from {PhoneNumber} for mentoria {MentoriaId}", phoneNumber, mentoriaId);
+            _logger.LogInformation("Successfully processed message from {PhoneNumber} for mentorship {MentorshipId}", phoneNumber, mentorshipId);
 
             return responseText;
         }

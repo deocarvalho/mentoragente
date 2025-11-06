@@ -40,7 +40,7 @@ public class ConversationRepository : IConversationRepository
             var response = await _supabaseClient
                 .From<Conversation>()
                 .Select("sender, message, created_at")
-                .Filter("agent_session_id", Operator.Equals, agentSessionId)
+                .Filter("agent_session_id", Operator.Equals, agentSessionId.ToString())
                 .Order("created_at", Ordering.Descending)
                 .Limit(20)
                 .Get();
@@ -117,7 +117,7 @@ public class ConversationRepository : IConversationRepository
         {
             await _supabaseClient
                 .From<Conversation>()
-                .Filter("agent_session_id", Operator.Equals, agentSessionId)
+                .Filter("agent_session_id", Operator.Equals, agentSessionId.ToString())
                 .Delete();
 
             _logger.LogInformation("Cleared conversation for agent session {AgentSessionId}", agentSessionId);
@@ -141,7 +141,7 @@ public class ConversationRepository : IConversationRepository
             var sessionResponse = await _supabaseClient
                 .From<AgentSession>()
                 .Select("ai_context_id")
-                .Filter("id", Operator.Equals, agentSessionId)
+                .Filter("id", Operator.Equals, agentSessionId.ToString())
                 .Get();
 
             var session = sessionResponse.Models.FirstOrDefault();

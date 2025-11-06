@@ -248,10 +248,10 @@
 			]
 		},
 		{
-			"name": "Mentorias",
+			"name": "Mentorships",
 			"item": [
 				{
-					"name": "Get Mentoria by ID",
+					"name": "Get Mentorship by ID",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -263,22 +263,22 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/mentorias/{{mentoria_id}}",
+							"raw": "{{base_url}}/api/mentorships/{{mentorship_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"mentorias",
-								"{{mentoria_id}}"
+								"mentorships",
+								"{{mentorship_id}}"
 							]
 						},
-						"description": "Get a specific mentoria by ID"
+						"description": "Get a specific mentorship by ID"
 					},
 					"response": []
 				},
 				{
-					"name": "Get Mentorias by Mentor ID (Paginated)",
+					"name": "Get Mentorships by Mentor ID (Paginated)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -290,13 +290,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/mentorias/mentor/{{mentor_id}}?page=1&pageSize=10",
+							"raw": "{{base_url}}/api/mentorships/mentor/{{mentor_id}}?page=1&pageSize=10",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"mentorias",
+								"mentorships",
 								"mentor",
 								"{{mentor_id}}"
 							],
@@ -311,12 +311,12 @@
 								}
 							]
 						},
-						"description": "Get all mentorias for a specific mentor with pagination"
+						"description": "Get all mentorships for a specific mentor with pagination"
 					},
 					"response": []
 				},
 				{
-					"name": "Get Active Mentorias (Paginated)",
+					"name": "Get Active Mentorships (Paginated)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -328,13 +328,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/mentorias/active?page=1&pageSize=10",
+							"raw": "{{base_url}}/api/mentorships/active?page=1&pageSize=10",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"mentorias",
+								"mentorships",
 								"active"
 							],
 							"query": [
@@ -348,12 +348,12 @@
 								}
 							]
 						},
-						"description": "Get all active mentorias with pagination"
+						"description": "Get all active mentorships with pagination"
 					},
 					"response": []
 				},
 				{
-					"name": "Create Mentoria",
+					"name": "Create Mentorship",
 					"event": [
 						{
 							"listen": "test",
@@ -361,7 +361,7 @@
 								"exec": [
 									"if (pm.response.code === 201) {",
 									"    var jsonData = pm.response.json();",
-									"    pm.collectionVariables.set(\"mentoria_id\", jsonData.id);",
+									"    pm.collectionVariables.set(\"mentorship_id\", jsonData.id);",
 									"}"
 								],
 								"type": "text/javascript"
@@ -384,7 +384,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"mentorId\": \"{{mentor_id}}\",\n    \"nome\": \"Nina - Descoberta de Oferta\",\n    \"assistantId\": \"asst_YOUR_ASSISTANT_ID_HERE\",\n    \"duracaoDias\": 30,\n    \"descricao\": \"Programa de 30 dias para descobrir sua oferta única de mentoria\"\n}",
+							"raw": "{\n    \"mentorId\": \"{{mentor_id}}\",\n    \"name\": \"Nina - Mentorship Offer Discovery\",\n    \"assistantId\": \"asst_YOUR_ASSISTANT_ID_HERE\",\n    \"durationDays\": 30,\n    \"description\": \"30-day program to discover your unique mentorship offer\",\n    \"evolutionApiKey\": \"YOUR_EVOLUTION_API_KEY\",\n    \"evolutionInstanceName\": \"YOUR_INSTANCE_NAME\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -392,21 +392,21 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/mentorias",
+							"raw": "{{base_url}}/api/mentorships",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"mentorias"
+								"mentorships"
 							]
 						},
-						"description": "Create a new mentoria"
+						"description": "Create a new mentorship"
 					},
 					"response": []
 				},
 				{
-					"name": "Update Mentoria",
+					"name": "Update Mentorship",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -423,7 +423,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"nome\": \"Nina - Descoberta de Oferta (Updated)\",\n    \"duracaoDias\": 60,\n    \"descricao\": \"Programa atualizado de 60 dias\",\n    \"status\": \"Active\"\n}",
+							"raw": "{\n    \"name\": \"Nina - Mentorship Offer Discovery (Updated)\",\n    \"durationDays\": 60,\n    \"description\": \"Updated 60-day program\",\n    \"status\": \"Active\",\n    \"evolutionApiKey\": \"UPDATED_API_KEY\",\n    \"evolutionInstanceName\": \"UPDATED_INSTANCE_NAME\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -431,22 +431,22 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/mentorias/{{mentoria_id}}",
+							"raw": "{{base_url}}/api/mentorships/{{mentorship_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"mentorias",
-								"{{mentoria_id}}"
+								"mentorships",
+								"{{mentorship_id}}"
 							]
 						},
-						"description": "Update mentoria information"
+						"description": "Update mentorship information"
 					},
 					"response": []
 				},
 				{
-					"name": "Delete Mentoria (Soft Delete)",
+					"name": "Delete Mentorship (Soft Delete)",
 					"request": {
 						"method": "DELETE",
 						"header": [
@@ -458,17 +458,17 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/mentorias/{{mentoria_id}}",
+							"raw": "{{base_url}}/api/mentorships/{{mentorship_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
-								"mentorias",
-								"{{mentoria_id}}"
+								"mentorships",
+								"{{mentorship_id}}"
 							]
 						},
-						"description": "Soft delete mentoria (marks as Archived)"
+						"description": "Soft delete mentorship (marks as Archived)"
 					},
 					"response": []
 				}
@@ -505,7 +505,7 @@
 					"response": []
 				},
 				{
-					"name": "Get Agent Session by User and Mentoria",
+					"name": "Get Agent Session by User and Mentorship",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -517,7 +517,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}/mentoria/{{mentoria_id}}",
+							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}/mentorship/{{mentorship_id}}",
 							"host": [
 								"{{base_url}}"
 							],
@@ -526,11 +526,11 @@
 								"agentsessions",
 								"user",
 								"{{user_id}}",
-								"mentoria",
-								"{{mentoria_id}}"
+								"mentorship",
+								"{{mentorship_id}}"
 							]
 						},
-						"description": "Get agent session for a specific user and mentoria"
+						"description": "Get agent session for a specific user and mentorship"
 					},
 					"response": []
 				},
@@ -547,7 +547,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}/mentoria/{{mentoria_id}}/active",
+							"raw": "{{base_url}}/api/agentsessions/user/{{user_id}}/mentorship/{{mentorship_id}}/active",
 							"host": [
 								"{{base_url}}"
 							],
@@ -556,12 +556,12 @@
 								"agentsessions",
 								"user",
 								"{{user_id}}",
-								"mentoria",
-								"{{mentoria_id}}",
+								"mentorship",
+								"{{mentorship_id}}",
 								"active"
 							]
 						},
-						"description": "Get active agent session for a specific user and mentoria"
+						"description": "Get active agent session for a specific user and mentorship"
 					},
 					"response": []
 				},
@@ -635,7 +635,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"userId\": \"{{user_id}}\",\n    \"mentoriaId\": \"{{mentoria_id}}\",\n    \"aiContextId\": null\n}",
+							"raw": "{\n    \"userId\": \"{{user_id}}\",\n    \"mentorshipId\": \"{{mentorship_id}}\",\n    \"aiContextId\": null\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -805,7 +805,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/WhatsAppWebhook?mentoriaId={{mentoria_id}}",
+							"raw": "{{base_url}}/api/WhatsAppWebhook?mentorshipId={{mentorship_id}}",
 							"host": [
 								"{{base_url}}"
 							],
@@ -815,13 +815,13 @@
 							],
 							"query": [
 								{
-									"key": "mentoriaId",
-									"value": "{{mentoria_id}}",
-									"description": "Required: Mentoria ID to process the message"
+									"key": "mentorshipId",
+									"value": "{{mentorship_id}}",
+									"description": "Required: Mentorship ID to process the message"
 								}
 							]
 						},
-						"description": "Receive and process WhatsApp webhook message. Requires mentoriaId query parameter."
+						"description": "Receive and process WhatsApp webhook message. Requires mentorshipId query parameter."
 					},
 					"response": []
 				},
@@ -845,7 +845,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/WhatsAppWebhook?mentoriaId={{mentoria_id}}",
+							"raw": "{{base_url}}/api/WhatsAppWebhook?mentorshipId={{mentorship_id}}",
 							"host": [
 								"{{base_url}}"
 							],
@@ -855,8 +855,8 @@
 							],
 							"query": [
 								{
-									"key": "mentoriaId",
-									"value": "{{mentoria_id}}"
+									"key": "mentorshipId",
+									"value": "{{mentorship_id}}"
 								}
 							]
 						},
@@ -889,7 +889,7 @@
 			"type": "string"
 		},
 		{
-			"key": "mentoria_id",
+			"key": "mentorship_id",
 			"value": "",
 			"type": "string"
 		},

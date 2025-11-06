@@ -100,5 +100,175 @@ public class UsersControllerAdditionalTests
         // Assert
         result.Result.Should().BeOfType<NotFoundObjectResult>();
     }
+
+    [Fact]
+    public async Task GetUserById_ShouldReturnUser()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, Name = "Test User" };
+
+        _mockUserService.Setup(x => x.GetUserByIdAsync(userId))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _controller.GetUserById(userId);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task GetUserById_ShouldReturnNotFoundWhenNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _mockUserService.Setup(x => x.GetUserByIdAsync(userId))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.GetUserById(userId);
+
+        // Assert
+        result.Result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task GetUserByPhone_ShouldReturnUser()
+    {
+        // Arrange
+        var phoneNumber = "5511999999999";
+        var user = new User { PhoneNumber = phoneNumber, Name = "Test User" };
+
+        _mockUserService.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _controller.GetUserByPhone(phoneNumber);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task GetUserByPhone_ShouldReturnNotFoundWhenNotFound()
+    {
+        // Arrange
+        var phoneNumber = "5511999999999";
+
+        _mockUserService.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.GetUserByPhone(phoneNumber);
+
+        // Assert
+        result.Result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task CreateUser_ShouldReturnCreatedWhenSuccessful()
+    {
+        // Arrange
+        var request = new CreateUserRequestDto
+        {
+            PhoneNumber = "5511999999999",
+            Name = "Test User",
+            Email = "test@example.com"
+        };
+        var validationResult = new FluentValidation.Results.ValidationResult();
+        var user = new User { Id = Guid.NewGuid(), PhoneNumber = request.PhoneNumber, Name = request.Name };
+
+        _mockCreateValidator.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(validationResult);
+
+        _mockUserService.Setup(x => x.CreateUserAsync(request.PhoneNumber, request.Name, request.Email))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _controller.CreateUser(request);
+
+        // Assert
+        result.Result.Should().BeOfType<CreatedAtActionResult>();
+    }
+
+    [Fact]
+    public async Task CreateUser_ShouldReturnConflictWhenUserExists()
+    {
+        // Arrange
+        var request = new CreateUserRequestDto
+        {
+            PhoneNumber = "5511999999999",
+            Name = "Test User"
+        };
+        var validationResult = new FluentValidation.Results.ValidationResult();
+
+        _mockCreateValidator.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(validationResult);
+
+        _mockUserService.Setup(x => x.CreateUserAsync(request.PhoneNumber, request.Name, request.Email))
+            .ThrowsAsync(new InvalidOperationException("User already exists"));
+
+        // Act
+        var result = await _controller.CreateUser(request);
+
+        // Assert
+        result.Result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateUser_ShouldReturnUpdatedUser()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new UpdateUserRequestDto { Name = "Updated Name" };
+        var validationResult = new FluentValidation.Results.ValidationResult();
+        var user = new User { Id = userId, Name = "Updated Name" };
+
+        _mockUpdateValidator.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(validationResult);
+
+        _mockUserService.Setup(x => x.UpdateUserAsync(userId, request.Name, request.Email, null))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _controller.UpdateUser(userId, request);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task DeleteUser_ShouldReturnNoContentWhenSuccessful()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _mockUserService.Setup(x => x.DeleteUserAsync(userId))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _controller.DeleteUser(userId);
+
+        // Assert
+        result.Should().BeOfType<NoContentResult>();
+    }
+
+    [Fact]
+    public async Task DeleteUser_ShouldReturnNotFoundWhenNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _mockUserService.Setup(x => x.DeleteUserAsync(userId))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await _controller.DeleteUser(userId);
+
+        // Assert
+        result.Should().BeOfType<NotFoundObjectResult>();
+    }
 }
 

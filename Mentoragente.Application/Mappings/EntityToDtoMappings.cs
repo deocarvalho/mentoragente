@@ -20,19 +20,21 @@ public static class EntityToDtoMappings
         };
     }
 
-    public static MentoriaResponseDto ToDto(this Mentoria mentoria)
+    public static MentorshipResponseDto ToDto(this Mentorship mentorship)
     {
-        return new MentoriaResponseDto
+        return new MentorshipResponseDto
         {
-            Id = mentoria.Id,
-            Nome = mentoria.Nome,
-            MentorId = mentoria.MentorId,
-            AssistantId = mentoria.AssistantId,
-            DuracaoDias = mentoria.DuracaoDias,
-            Descricao = mentoria.Descricao,
-            Status = mentoria.Status.ToString(),
-            CreatedAt = mentoria.CreatedAt,
-            UpdatedAt = mentoria.UpdatedAt
+            Id = mentorship.Id,
+            Name = mentorship.Name,
+            MentorId = mentorship.MentorId,
+            AssistantId = mentorship.AssistantId,
+            DurationDays = mentorship.DurationDays,
+            Description = mentorship.Description,
+            Status = mentorship.Status.ToString(),
+            EvolutionApiKey = mentorship.EvolutionApiKey,
+            EvolutionInstanceName = mentorship.EvolutionInstanceName,
+            CreatedAt = mentorship.CreatedAt,
+            UpdatedAt = mentorship.UpdatedAt
         };
     }
 
@@ -42,7 +44,7 @@ public static class EntityToDtoMappings
         {
             Id = session.Id,
             UserId = session.UserId,
-            MentoriaId = session.MentoriaId,
+            MentorshipId = session.MentorshipId,
             AIProvider = session.AIProvider.ToString(),
             AIContextId = session.AIContextId,
             Status = session.Status.ToString(),
@@ -59,10 +61,10 @@ public static class EntityToDtoMappings
         return Enum.TryParse<UserStatus>(status, true, out var result) ? result : null;
     }
 
-    public static MentoriaStatus? ParseMentoriaStatus(string? status)
+    public static MentorshipStatus? ParseMentorshipStatus(string? status)
     {
         if (string.IsNullOrEmpty(status)) return null;
-        return Enum.TryParse<MentoriaStatus>(status, true, out var result) ? result : null;
+        return Enum.TryParse<MentorshipStatus>(status, true, out var result) ? result : null;
     }
 
     public static AgentSessionStatus? ParseAgentSessionStatus(string? status)

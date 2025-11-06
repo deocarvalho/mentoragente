@@ -1,17 +1,18 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 using Mentoragente.Domain.Enums;
+using Newtonsoft.Json;
 
 namespace Mentoragente.Domain.Entities;
 
-[Table("mentorias")]
-public class Mentoria : BaseModel
+[Table("mentorships")]
+public class Mentorship : BaseModel
 {
     [PrimaryKey("id")]
     public Guid Id { get; set; } = Guid.NewGuid();
     
-    [Column("nome")]
-    public string Nome { get; set; } = string.Empty;
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
     
     [Column("mentor_id")]
     public Guid MentorId { get; set; }
@@ -19,14 +20,20 @@ public class Mentoria : BaseModel
     [Column("assistant_id")]
     public string AssistantId { get; set; } = string.Empty;
     
-    [Column("duracao_dias")]
-    public int DuracaoDias { get; set; }
+    [Column("duration_days")]
+    public int DurationDays { get; set; }
     
-    [Column("descricao")]
-    public string? Descricao { get; set; }
+    [Column("description")]
+    public string? Description { get; set; }
     
     [Column("status")]
-    public MentoriaStatus Status { get; set; } = MentoriaStatus.Active;
+    public MentorshipStatus Status { get; set; } = MentorshipStatus.Active;
+    
+    [Column("evolution_api_key")]
+    public string EvolutionApiKey { get; set; } = string.Empty;
+    
+    [Column("evolution_instance_name")]
+    public string EvolutionInstanceName { get; set; } = string.Empty;
     
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

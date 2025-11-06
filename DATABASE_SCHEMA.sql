@@ -16,8 +16,8 @@ CREATE TYPE agent_session_status AS ENUM ('Active', 'Expired', 'Paused', 'Comple
 -- AI Provider
 CREATE TYPE ai_provider AS ENUM ('OpenAI');
 
--- Mentoria Status
-CREATE TYPE mentoria_status AS ENUM ('Active', 'Inactive', 'Archived');
+-- Mentorship Status
+CREATE TYPE mentorship_status AS ENUM ('Active', 'Inactive', 'Archived');
 
 -- ============================================
 -- TABLES
@@ -34,24 +34,26 @@ CREATE TABLE users (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Mentorias (cadastro de mentorias)
-CREATE TABLE mentorias (
+-- Mentorships (mentorship programs created by mentors)
+CREATE TABLE mentorships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,
     mentor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     assistant_id VARCHAR NOT NULL,  -- OpenAI Assistant ID
-    duracao_dias INT NOT NULL,  -- 30, 60, 90, etc.
-    descricao TEXT NULL,
-    status mentoria_status NOT NULL DEFAULT 'Active',
+    duration_days INT NOT NULL,  -- 30, 60, 90, etc.
+    description TEXT NULL,
+    status mentorship_status NOT NULL DEFAULT 'Active',
+    evolution_api_key VARCHAR NOT NULL DEFAULT '',
+    evolution_instance_name VARCHAR NOT NULL DEFAULT '',
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Agent Sessions (sessões de agentes - vincula User + Mentoria)
+-- Agent Sessions (agent sessions - links User + Mentorship)
 CREATE TABLE agent_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    mentoria_id UUID NOT NULL REFERENCES mentorias(id) ON DELETE CASCADE,
+    mentorship_id UUID NOT NULL REFERENCES mentorships(id) ON DELETE CASCADE,
     ai_provider ai_provider NOT NULL DEFAULT 'OpenAI',
     ai_context_id VARCHAR NULL,  -- OpenAI Thread ID
     status agent_session_status NOT NULL DEFAULT 'Active',
@@ -96,21 +98,21 @@ CREATE INDEX idx_users_phone_number ON users(phone_number);
 CREATE INDEX idx_users_email ON users(email) WHERE email IS NOT NULL;
 CREATE INDEX idx_users_status ON users(status);
 
--- Mentorias indexes
-CREATE INDEX idx_mentorias_mentor_id ON mentorias(mentor_id);
-CREATE INDEX idx_mentorias_status ON mentorias(status);
-CREATE INDEX idx_mentorias_assistant_id ON mentorias(assistant_id);
+-- Mentorships indexes
+CREATE INDEX idx_mentorships_mentor_id ON mentorships(mentor_id);
+CREATE INDEX idx_mentorships_status ON mentorships(status);
+CREATE INDEX idx_mentorships_assistant_id ON mentorships(assistant_id);
 
 -- Agent Sessions indexes
 CREATE INDEX idx_agent_sessions_user_id ON agent_sessions(user_id);
-CREATE INDEX idx_agent_sessions_mentoria_id ON agent_sessions(mentoria_id);
+CREATE INDEX idx_agent_sessions_mentorship_id ON agent_sessions(mentorship_id);
 CREATE INDEX idx_agent_sessions_status ON agent_sessions(status);
 CREATE INDEX idx_agent_sessions_ai_context_id ON agent_sessions(ai_context_id) WHERE ai_context_id IS NOT NULL;
 CREATE INDEX idx_agent_sessions_last_interaction ON agent_sessions(last_interaction);
 
--- Unique index: um usuário pode ter apenas uma sessão ativa por mentoria
+-- Unique index: a user can have only one active session per mentorship
 CREATE UNIQUE INDEX idx_agent_sessions_unique_active 
-    ON agent_sessions(user_id, mentoria_id) 
+    ON agent_sessions(user_id, mentorship_id) 
     WHERE status = 'Active';
 
 -- Agent Session Data indexes
@@ -142,8 +144,8 @@ CREATE TRIGGER update_users_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_mentorias_updated_at
-    BEFORE UPDATE ON mentorias
+CREATE TRIGGER update_mentorships_updated_at
+    BEFORE UPDATE ON mentorships
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -169,7 +171,7 @@ CREATE TRIGGER update_agent_session_data_updated_at
 
 -- 1. HABILITAR RLS EM TODAS AS TABELAS
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mentorias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mentorships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_session_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
@@ -187,9 +189,9 @@ CREATE POLICY "Service role has full access to users"
     USING (true)
     WITH CHECK (true);
 
--- Mentorias: Service role pode fazer tudo
-CREATE POLICY "Service role has full access to mentorias"
-    ON mentorias
+-- Mentorships: Service role can do everything
+CREATE POLICY "Service role has full access to mentorships"
+    ON mentorships
     FOR ALL
     TO service_role
     USING (true)
@@ -258,16 +260,18 @@ CREATE POLICY "Service role has full access to conversations"
 -- COMMENTS
 -- ============================================
 
-COMMENT ON TABLE users IS 'Pessoas físicas identificadas por telefone';
-COMMENT ON TABLE mentorias IS 'Cadastro de mentorias criadas por mentores';
-COMMENT ON TABLE agent_sessions IS 'Sessões de agentes - vincula User + Mentoria';
-COMMENT ON TABLE agent_session_data IS 'Dados da sessão - propriedades comuns';
-COMMENT ON TABLE conversations IS 'Histórico de mensagens por sessão';
+COMMENT ON TABLE users IS 'Physical persons identified by phone number';
+COMMENT ON TABLE mentorships IS 'Mentorship programs created by mentors';
+COMMENT ON TABLE agent_sessions IS 'Agent sessions - links User + Mentorship';
+COMMENT ON TABLE agent_session_data IS 'Session data - common properties';
+COMMENT ON TABLE conversations IS 'Message history per session';
 
-COMMENT ON COLUMN users.phone_number IS 'Identificador único, apenas dígitos (sem +)';
-COMMENT ON COLUMN mentorias.assistant_id IS 'OpenAI Assistant ID';
-COMMENT ON COLUMN agent_sessions.ai_context_id IS 'OpenAI Thread ID (persiste indefinidamente)';
-COMMENT ON COLUMN agent_session_data.custom_properties_json IS 'Propriedades customizadas futuras (JSONB)';
+COMMENT ON COLUMN users.phone_number IS 'Unique identifier, digits only (no +)';
+COMMENT ON COLUMN mentorships.assistant_id IS 'OpenAI Assistant ID';
+COMMENT ON COLUMN mentorships.evolution_api_key IS 'Evolution API key for this mentorship';
+COMMENT ON COLUMN mentorships.evolution_instance_name IS 'Evolution API instance name for this mentorship';
+COMMENT ON COLUMN agent_sessions.ai_context_id IS 'OpenAI Thread ID (persists indefinitely)';
+COMMENT ON COLUMN agent_session_data.custom_properties_json IS 'Future custom properties (JSONB)';
 
 -- ============================================
 -- SAMPLE DATA (Optional - for testing)
@@ -279,14 +283,16 @@ COMMENT ON COLUMN agent_session_data.custom_properties_json IS 'Propriedades cus
 INSERT INTO users (phone_number, name, email, status) 
 VALUES ('5511999999999', 'Paula', 'paula@example.com', 'Active');
 
--- Sample mentoria
-INSERT INTO mentorias (nome, mentor_id, assistant_id, duracao_dias, descricao)
+-- Sample mentorship
+INSERT INTO mentorships (name, mentor_id, assistant_id, duration_days, description, evolution_api_key, evolution_instance_name)
 VALUES (
-    'Nina - Descoberta de Oferta de Mentoria',
+    'Nina - Mentorship Offer Discovery',
     (SELECT id FROM users WHERE phone_number = '5511999999999'),
     'asst_YOUR_ASSISTANT_ID_HERE',
     30,
-    'Programa de 30 dias para descobrir sua oferta única de mentoria'
+    '30-day program to discover your unique mentorship offer',
+    'YOUR_EVOLUTION_API_KEY',
+    'YOUR_INSTANCE_NAME'
 );
 */
 

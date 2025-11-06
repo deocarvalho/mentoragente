@@ -5,6 +5,7 @@ using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
+using Mentoragente.Domain.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Tests.Application.Services;
@@ -12,7 +13,7 @@ namespace Mentoragente.Tests.Application.Services;
 public class MessageProcessorAdditionalTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
-    private readonly Mock<IMentoriaRepository> _mockMentoriaRepository;
+    private readonly Mock<IMentorshipRepository> _mockMentorshipRepository;
     private readonly Mock<IAgentSessionRepository> _mockAgentSessionRepository;
     private readonly Mock<IAgentSessionDataRepository> _mockAgentSessionDataRepository;
     private readonly Mock<IConversationRepository> _mockConversationRepository;
@@ -23,7 +24,7 @@ public class MessageProcessorAdditionalTests
     public MessageProcessorAdditionalTests()
     {
         _mockUserRepository = new Mock<IUserRepository>();
-        _mockMentoriaRepository = new Mock<IMentoriaRepository>();
+        _mockMentorshipRepository = new Mock<IMentorshipRepository>();
         _mockAgentSessionRepository = new Mock<IAgentSessionRepository>();
         _mockAgentSessionDataRepository = new Mock<IAgentSessionDataRepository>();
         _mockConversationRepository = new Mock<IConversationRepository>();
@@ -32,7 +33,7 @@ public class MessageProcessorAdditionalTests
         
         _messageProcessor = new MessageProcessor(
             _mockUserRepository.Object,
-            _mockMentoriaRepository.Object,
+            _mockMentorshipRepository.Object,
             _mockAgentSessionRepository.Object,
             _mockAgentSessionDataRepository.Object,
             _mockConversationRepository.Object,
@@ -41,12 +42,12 @@ public class MessageProcessorAdditionalTests
     }
 
     [Fact]
-    public async Task ProcessMessageAsync_ShouldThrowWhenMentoriaNotFound()
+    public async Task ProcessMessageAsync_ShouldThrowWhenMentorshipNotFound()
     {
         // Arrange
         var phoneNumber = "5511999999999";
         var messageText = "Hello!";
-        var mentoriaId = Guid.NewGuid();
+        var mentorshipId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         
         var user = new User { Id = userId, PhoneNumber = phoneNumber };
@@ -54,13 +55,13 @@ public class MessageProcessorAdditionalTests
         _mockUserRepository.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
             .ReturnsAsync(user);
 
-        _mockMentoriaRepository.Setup(x => x.GetMentoriaByIdAsync(mentoriaId))
-            .ReturnsAsync((Mentoria?)null);
+        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+            .ReturnsAsync((Mentorship?)null);
 
         // Act & Assert
-        await _messageProcessor.Invoking(mp => mp.ProcessMessageAsync(phoneNumber, messageText, mentoriaId))
+        await _messageProcessor.Invoking(mp => mp.ProcessMessageAsync(phoneNumber, messageText, mentorshipId))
             .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage($"*Mentoria {mentoriaId} not found*");
+            .WithMessage($"*Mentorship {mentorshipId} not found*");
     }
 
     [Fact]
@@ -69,24 +70,24 @@ public class MessageProcessorAdditionalTests
         // Arrange
         var phoneNumber = "5511999999999";
         var messageText = "Hello!";
-        var mentoriaId = Guid.NewGuid();
+        var mentorshipId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var agentSessionId = Guid.NewGuid();
         var threadId = "thread_ABC123";
         
         var user = new User { Id = userId, PhoneNumber = phoneNumber };
-        var mentoria = new Mentoria 
+        var mentorship = new Mentorship 
         { 
-            Id = mentoriaId, 
+            Id = mentorshipId, 
             AssistantId = "asst_TEST",
-            DuracaoDias = 30,
-            Status = MentoriaStatus.Active
+            DurationDays = 30,
+            Status = MentorshipStatus.Active
         };
         var agentSession = new AgentSession 
         { 
             Id = agentSessionId, 
             UserId = userId, 
-            MentoriaId = mentoriaId,
+            MentorshipId = mentorshipId,
             AIContextId = threadId,
             Status = AgentSessionStatus.Active 
         };
@@ -99,24 +100,32 @@ public class MessageProcessorAdditionalTests
         _mockUserRepository.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
             .ReturnsAsync(user);
 
-        _mockMentoriaRepository.Setup(x => x.GetMentoriaByIdAsync(mentoriaId))
-            .ReturnsAsync(mentoria);
+        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+            .ReturnsAsync(mentorship);
 
-        _mockAgentSessionRepository.Setup(x => x.GetActiveAgentSessionAsync(userId, mentoriaId))
-            .ReturnsAsync(agentSession);
+        var sessionWithData = new AgentSessionWithData
+        {
+            Session = agentSession,
+            Data = sessionData
+        };
 
-        _mockAgentSessionDataRepository.Setup(x => x.GetAgentSessionDataAsync(agentSessionId))
-            .ReturnsAsync(sessionData);
+        _mockAgentSessionRepository.Setup(x => x.GetActiveAgentSessionWithDataAsync(userId, mentorshipId))
+            .ReturnsAsync(sessionWithData);
 
-        _mockOpenAIAssistantService.Setup(x => x.RunAssistantAsync(threadId, mentoria.AssistantId))
+        _mockAgentSessionRepository.Setup(x => x.UpdateAgentSessionAsync(It.IsAny<AgentSession>()))
+            .ReturnsAsync((AgentSession s) => s);
+
+        _mockAgentSessionDataRepository.Setup(x => x.UpdateAgentSessionDataAsync(It.IsAny<AgentSessionData>()))
+            .ReturnsAsync((AgentSessionData data) => data);
+
+        _mockOpenAIAssistantService.Setup(x => x.RunAssistantAsync(threadId, mentorship.AssistantId))
             .ThrowsAsync(new Exception("OpenAI API error"));
 
-        // Act
-        var result = await _messageProcessor.ProcessMessageAsync(phoneNumber, messageText, mentoriaId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Should().Contain("erro");
+        // Act & Assert
+        await _messageProcessor.Invoking(mp => mp.ProcessMessageAsync(phoneNumber, messageText, mentorshipId))
+            .Should().ThrowAsync<Exception>()
+            .WithMessage("*OpenAI API error*");
+        
         _mockConversationRepository.Verify(x => x.AddMessageAsync(agentSessionId, "user", messageText), Times.Once);
     }
 
@@ -126,25 +135,25 @@ public class MessageProcessorAdditionalTests
         // Arrange
         var phoneNumber = "5511999999999";
         var messageText = "Hello!";
-        var mentoriaId = Guid.NewGuid();
+        var mentorshipId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var agentSessionId = Guid.NewGuid();
         var threadId = "thread_ABC123";
         var responseText = "Hi there!";
         
         var user = new User { Id = userId, PhoneNumber = phoneNumber };
-        var mentoria = new Mentoria 
+        var mentorship = new Mentorship 
         { 
-            Id = mentoriaId, 
+            Id = mentorshipId, 
             AssistantId = "asst_TEST",
-            DuracaoDias = 30,
-            Status = MentoriaStatus.Active
+            DurationDays = 30,
+            Status = MentorshipStatus.Active
         };
         var agentSession = new AgentSession 
         { 
             Id = agentSessionId, 
             UserId = userId, 
-            MentoriaId = mentoriaId,
+            MentorshipId = mentorshipId,
             AIContextId = threadId,
             Status = AgentSessionStatus.Active,
             TotalMessages = 5
@@ -158,20 +167,29 @@ public class MessageProcessorAdditionalTests
         _mockUserRepository.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
             .ReturnsAsync(user);
 
-        _mockMentoriaRepository.Setup(x => x.GetMentoriaByIdAsync(mentoriaId))
-            .ReturnsAsync(mentoria);
+        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+            .ReturnsAsync(mentorship);
 
-        _mockAgentSessionRepository.Setup(x => x.GetActiveAgentSessionAsync(userId, mentoriaId))
-            .ReturnsAsync(agentSession);
+        var sessionWithData = new AgentSessionWithData
+        {
+            Session = agentSession,
+            Data = sessionData
+        };
 
-        _mockAgentSessionDataRepository.Setup(x => x.GetAgentSessionDataAsync(agentSessionId))
-            .ReturnsAsync(sessionData);
+        _mockAgentSessionRepository.Setup(x => x.GetActiveAgentSessionWithDataAsync(userId, mentorshipId))
+            .ReturnsAsync(sessionWithData);
 
-        _mockOpenAIAssistantService.Setup(x => x.RunAssistantAsync(threadId, mentoria.AssistantId))
+        _mockAgentSessionRepository.Setup(x => x.UpdateAgentSessionAsync(It.IsAny<AgentSession>()))
+            .ReturnsAsync((AgentSession s) => s);
+
+        _mockAgentSessionDataRepository.Setup(x => x.UpdateAgentSessionDataAsync(It.IsAny<AgentSessionData>()))
+            .ReturnsAsync((AgentSessionData data) => data);
+
+        _mockOpenAIAssistantService.Setup(x => x.RunAssistantAsync(threadId, mentorship.AssistantId))
             .ReturnsAsync(responseText);
 
         // Act
-        await _messageProcessor.ProcessMessageAsync(phoneNumber, messageText, mentoriaId);
+        await _messageProcessor.ProcessMessageAsync(phoneNumber, messageText, mentorshipId);
 
         // Assert
         _mockAgentSessionRepository.Verify(x => x.UpdateAgentSessionAsync(
@@ -180,6 +198,8 @@ public class MessageProcessorAdditionalTests
                 s.LastInteraction.HasValue &&
                 s.TotalMessages == 7)), // 5 + 2 (user + assistant)
             Times.Once);
+        
+        _mockAgentSessionDataRepository.Verify(x => x.UpdateAgentSessionDataAsync(It.IsAny<AgentSessionData>()), Times.Once);
     }
 }
 

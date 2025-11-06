@@ -2,7 +2,6 @@ using Mentoragente.Domain.Interfaces;
 using Mentoragente.Application.Services;
 using Mentoragente.Infrastructure.Services;
 using Mentoragente.Infrastructure.Repositories;
-using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 
@@ -12,6 +11,9 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        // Configure global JSON serialization for enums
+        Infrastructure.Extensions.JsonConfigurationExtensions.ConfigureGlobalJsonSerialization();
+
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container
@@ -21,18 +23,18 @@ public class Program
         builder.Services.AddHealthChecks();
 
         // FluentValidation
-        builder.Services.AddValidatorsFromAssemblyContaining<Mentoragente.Application.Validators.CreateUserRequestValidator>();
+        builder.Services.AddValidatorsFromAssemblyContaining<Application.Validators.CreateUserRequestValidator>();
         builder.Services.AddFluentValidationAutoValidation();
 
         // Authentication (API Key - optional, can be enabled per controller)
         builder.Services.AddAuthentication("ApiKey")
-            .AddScheme<Mentoragente.API.Middleware.ApiKeyAuthenticationOptions, Mentoragente.API.Middleware.ApiKeyAuthenticationHandler>(
+            .AddScheme<Middleware.ApiKeyAuthenticationOptions, Middleware.ApiKeyAuthenticationHandler>(
                 "ApiKey", options => { });
 
         // Register Application Layer services
         builder.Services.AddScoped<IMessageProcessor, MessageProcessor>();
         builder.Services.AddScoped<IUserService, UserService>();
-        builder.Services.AddScoped<IMentoriaService, MentoriaService>();
+        builder.Services.AddScoped<IMentorshipService, MentorshipService>();
         builder.Services.AddScoped<IAgentSessionService, AgentSessionService>();
 
         // Register Infrastructure Layer services
@@ -41,7 +43,7 @@ public class Program
 
         // Register Repositories
         builder.Services.AddScoped<IUserRepository, UserRepository>();
-        builder.Services.AddScoped<IMentoriaRepository, MentoriaRepository>();
+        builder.Services.AddScoped<IMentorshipRepository, MentorshipRepository>();
         builder.Services.AddScoped<IAgentSessionRepository, AgentSessionRepository>();
         builder.Services.AddScoped<IAgentSessionDataRepository, AgentSessionDataRepository>();
         builder.Services.AddScoped<IConversationRepository, ConversationRepository>();

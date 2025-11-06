@@ -19,7 +19,7 @@ A collection já vem com variáveis pré-configuradas que você pode ajustar:
 - **`api_key`**: Chave da API para autenticação (opcional, se habilitar `[Authorize]`)
 - **`user_id`**: ID do usuário (preenchido automaticamente ao criar um usuário)
 - **`mentor_id`**: ID do mentor (use o mesmo `user_id` se for mentor)
-- **`mentoria_id`**: ID da mentoria (preenchido automaticamente ao criar uma mentoria)
+- **`mentorship_id`**: ID da mentorship (preenchido automaticamente ao criar uma mentorship)
 - **`agent_session_id`**: ID da sessão (preenchido automaticamente ao criar uma sessão)
 
 ### Como usar
@@ -30,7 +30,7 @@ A collection já vem com variáveis pré-configuradas que você pode ajustar:
    - Ajuste os valores conforme necessário
 
 2. **Variáveis automáticas**:
-   - Alguns requests têm scripts que preenchem automaticamente variáveis como `user_id`, `mentoria_id`, etc.
+   - Alguns requests têm scripts que preenchem automaticamente variáveis como `user_id`, `mentorship_id`, etc.
    - Execute os requests de criação primeiro para popular essas variáveis
 
 ## 📋 Endpoints Disponíveis
@@ -46,18 +46,18 @@ A collection já vem com variáveis pré-configuradas que você pode ajustar:
 - `PUT /api/users/{id}` - Atualizar usuário
 - `DELETE /api/users/{id}` - Deletar usuário (soft delete)
 
-### Mentorias
-- `GET /api/mentorias/{id}` - Buscar mentoria por ID
-- `GET /api/mentorias/mentor/{mentorId}` - Listar mentorias de um mentor (paginação)
-- `GET /api/mentorias/active` - Listar mentorias ativas (paginação)
-- `POST /api/mentorias` - Criar mentoria
-- `PUT /api/mentorias/{id}` - Atualizar mentoria
-- `DELETE /api/mentorias/{id}` - Deletar mentoria (soft delete)
+### Mentorships
+- `GET /api/mentorships/{id}` - Get mentorship by ID
+- `GET /api/mentorships/mentor/{mentorId}` - List mentorships for a mentor (paginated)
+- `GET /api/mentorships/active` - List active mentorships (paginated)
+- `POST /api/mentorships` - Create mentorship
+- `PUT /api/mentorships/{id}` - Update mentorship
+- `DELETE /api/mentorships/{id}` - Delete mentorship (soft delete)
 
 ### Agent Sessions
-- `GET /api/agentsessions/{id}` - Buscar sessão por ID
-- `GET /api/agentsessions/user/{userId}/mentoria/{mentoriaId}` - Buscar sessão por user e mentoria
-- `GET /api/agentsessions/user/{userId}/mentoria/{mentoriaId}/active` - Buscar sessão ativa
+- `GET /api/agentsessions/{id}` - Get session by ID
+- `GET /api/agentsessions/user/{userId}/mentorship/{mentorshipId}` - Get session by user and mentorship
+- `GET /api/agentsessions/user/{userId}/mentorship/{mentorshipId}/active` - Get active session
 - `GET /api/agentsessions/user/{userId}` - Listar sessões de um usuário (paginação)
 - `POST /api/agentsessions` - Criar sessão
 - `PUT /api/agentsessions/{id}` - Atualizar sessão
@@ -66,7 +66,7 @@ A collection já vem com variáveis pré-configuradas que você pode ajustar:
 - `POST /api/agentsessions/{id}/resume` - Retomar sessão
 
 ### WhatsApp Webhook
-- `POST /api/WhatsAppWebhook?mentoriaId={id}` - Receber mensagem do WhatsApp
+- `POST /api/WhatsAppWebhook?mentorshipId={id}` - Receive WhatsApp message
 
 ## 🔐 Autenticação
 
@@ -80,12 +80,12 @@ As requisições já têm o header `X-API-Key` configurado (mas desabilitado por
 
 ## 🚀 Fluxo de Teste Recomendado
 
-1. **Health Check**: Verifique se a API está rodando
-2. **Criar Usuário (Mentor)**: Crie um usuário que será o mentor
-3. **Criar Mentoria**: Use o ID do mentor criado
-4. **Criar Usuário (Mentee)**: Crie outro usuário que será o mentorado
-5. **Criar Agent Session**: Crie uma sessão ligando o mentorado à mentoria
-6. **Testar WhatsApp Webhook**: Envie uma mensagem simulada
+1. **Health Check**: Verify API is running
+2. **Create User (Mentor)**: Create a user who will be the mentor
+3. **Create Mentorship**: Use the created mentor ID
+4. **Create User (Mentee)**: Create another user who will be the mentee
+5. **Create Agent Session**: Create a session linking the mentee to the mentorship
+6. **Test WhatsApp Webhook**: Send a simulated message
 
 ## 📝 Exemplos de Uso
 
@@ -100,23 +100,25 @@ POST /api/users
 }
 ```
 
-### Criar uma mentoria:
+### Create a mentorship:
 
 ```json
-POST /api/mentorias
+POST /api/mentorships
 {
     "mentorId": "{{mentor_id}}",
-    "nome": "Nina - Descoberta de Oferta",
+    "name": "Nina - Mentorship Offer Discovery",
     "assistantId": "asst_YOUR_ASSISTANT_ID",
-    "duracaoDias": 30,
-    "descricao": "Programa de 30 dias"
+    "durationDays": 30,
+    "description": "30-day program",
+    "evolutionApiKey": "YOUR_EVOLUTION_API_KEY",
+    "evolutionInstanceName": "YOUR_INSTANCE_NAME"
 }
 ```
 
-### Testar WhatsApp Webhook:
+### Test WhatsApp Webhook:
 
 ```json
-POST /api/WhatsAppWebhook?mentoriaId={{mentoria_id}}
+POST /api/WhatsAppWebhook?mentorshipId={{mentorship_id}}
 {
     "event": "messages.upsert",
     "data": {

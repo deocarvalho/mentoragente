@@ -45,12 +45,12 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    [HttpGet("user/{userId}/mentoria/{mentoriaId}")]
-    public async Task<ActionResult<AgentSessionResponseDto>> GetAgentSession(Guid userId, Guid mentoriaId)
+    [HttpGet("user/{userId}/mentorship/{mentorshipId}")]
+    public async Task<ActionResult<AgentSessionResponseDto>> GetAgentSession(Guid userId, Guid mentorshipId)
     {
         try
         {
-            var session = await _agentSessionService.GetAgentSessionAsync(userId, mentoriaId);
+            var session = await _agentSessionService.GetAgentSessionAsync(userId, mentorshipId);
             if (session == null)
                 return NotFound(new { message = $"Agent session not found" });
             return Ok(session.ToDto());
@@ -62,12 +62,12 @@ public class AgentSessionsController : ControllerBase
         }
     }
 
-    [HttpGet("user/{userId}/mentoria/{mentoriaId}/active")]
-    public async Task<ActionResult<AgentSessionResponseDto>> GetActiveAgentSession(Guid userId, Guid mentoriaId)
+    [HttpGet("user/{userId}/mentorship/{mentorshipId}/active")]
+    public async Task<ActionResult<AgentSessionResponseDto>> GetActiveAgentSession(Guid userId, Guid mentorshipId)
     {
         try
         {
-            var session = await _agentSessionService.GetActiveAgentSessionAsync(userId, mentoriaId);
+            var session = await _agentSessionService.GetActiveAgentSessionAsync(userId, mentorshipId);
             if (session == null)
                 return NotFound(new { message = $"Active agent session not found" });
             return Ok(session.ToDto());
@@ -119,7 +119,7 @@ public class AgentSessionsController : ControllerBase
                 return BadRequest(validationResult.Errors);
 
             var session = await _agentSessionService.CreateAgentSessionAsync(
-                request.UserId, request.MentoriaId, request.AIContextId);
+                request.UserId, request.MentorshipId, request.AIContextId);
 
             return CreatedAtAction(nameof(GetAgentSessionById), new { id = session.Id }, session.ToDto());
         }
