@@ -31,8 +31,8 @@ public static class EntityToDtoMappings
             DurationDays = mentorship.DurationDays,
             Description = mentorship.Description,
             Status = mentorship.Status.ToString(),
-            EvolutionApiKey = mentorship.EvolutionApiKey,
-            EvolutionInstanceName = mentorship.EvolutionInstanceName,
+            WhatsAppProvider = mentorship.WhatsAppProvider.ToString(),
+            InstanceCode = mentorship.InstanceCode,
             CreatedAt = mentorship.CreatedAt,
             UpdatedAt = mentorship.UpdatedAt
         };
@@ -71,6 +71,12 @@ public static class EntityToDtoMappings
     {
         if (string.IsNullOrEmpty(status)) return null;
         return Enum.TryParse<AgentSessionStatus>(status, true, out var result) ? result : null;
+    }
+
+    public static WhatsAppProvider? ParseWhatsAppProvider(string? provider)
+    {
+        if (string.IsNullOrEmpty(provider)) return null;
+        return Enum.TryParse<WhatsAppProvider>(provider, true, out var result) ? result : null;
     }
 }
 

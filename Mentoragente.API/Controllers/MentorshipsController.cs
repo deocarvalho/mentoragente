@@ -88,14 +88,18 @@ public class MentorshipsController : ControllerBase
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
+        var whatsAppProvider = !string.IsNullOrEmpty(request.WhatsAppProvider)
+            ? EntityToDtoMappings.ParseWhatsAppProvider(request.WhatsAppProvider)
+            : null;
+
         var mentorship = await _mentorshipService.CreateMentorshipAsync(
             request.MentorId, 
             request.Name, 
             request.AssistantId, 
             request.DurationDays, 
             request.Description,
-            request.EvolutionApiKey,
-            request.EvolutionInstanceName);
+            whatsAppProvider,
+            request.InstanceCode);
 
         return CreatedAtAction(nameof(GetMentorshipById), new { id = mentorship.Id }, mentorship.ToDto());
     }
@@ -107,6 +111,10 @@ public class MentorshipsController : ControllerBase
         if (!validationResult.IsValid)
             return BadRequest(validationResult.Errors);
 
+        var whatsAppProvider = !string.IsNullOrEmpty(request.WhatsAppProvider)
+            ? EntityToDtoMappings.ParseWhatsAppProvider(request.WhatsAppProvider)
+            : null;
+
         var mentorship = await _mentorshipService.UpdateMentorshipAsync(
             id, 
             request.Name, 
@@ -114,8 +122,8 @@ public class MentorshipsController : ControllerBase
             request.DurationDays, 
             request.Description,
             EntityToDtoMappings.ParseMentorshipStatus(request.Status),
-            request.EvolutionApiKey,
-            request.EvolutionInstanceName);
+            whatsAppProvider,
+            request.InstanceCode);
 
         return Ok(mentorship.ToDto());
     }

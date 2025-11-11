@@ -27,13 +27,13 @@ public class CreateMentorshipRequestValidator : AbstractValidator<CreateMentorsh
             .MaximumLength(1000).WithMessage("Description cannot exceed 1000 characters")
             .When(x => !string.IsNullOrEmpty(x.Description));
 
-        RuleFor(x => x.EvolutionApiKey)
-            .NotEmpty().WithMessage("Evolution API Key is required")
-            .MaximumLength(500).WithMessage("Evolution API Key cannot exceed 500 characters");
+        RuleFor(x => x.InstanceCode)
+            .NotEmpty().WithMessage("Instance code is required")
+            .MaximumLength(100).WithMessage("Instance code cannot exceed 100 characters");
 
-        RuleFor(x => x.EvolutionInstanceName)
-            .NotEmpty().WithMessage("Evolution Instance Name is required")
-            .MaximumLength(100).WithMessage("Evolution Instance Name cannot exceed 100 characters");
+        RuleFor(x => x.WhatsAppProvider)
+            .Must(BeValidProvider).WithMessage("WhatsApp Provider must be one of: EvolutionAPI, ZApi, OfficialWhatsApp")
+            .When(x => !string.IsNullOrEmpty(x.WhatsAppProvider));
     }
 }
 
@@ -63,19 +63,25 @@ public class UpdateMentorshipRequestValidator : AbstractValidator<UpdateMentorsh
             .Must(BeValidStatus).WithMessage("Status must be one of: Active, Inactive, Archived")
             .When(x => !string.IsNullOrEmpty(x.Status));
 
-        RuleFor(x => x.EvolutionApiKey)
-            .MaximumLength(500).WithMessage("Evolution API Key cannot exceed 500 characters")
-            .When(x => !string.IsNullOrEmpty(x.EvolutionApiKey));
+        RuleFor(x => x.InstanceCode)
+            .MaximumLength(100).WithMessage("Instance code cannot exceed 100 characters")
+            .When(x => !string.IsNullOrEmpty(x.InstanceCode));
 
-        RuleFor(x => x.EvolutionInstanceName)
-            .MaximumLength(100).WithMessage("Evolution Instance Name cannot exceed 100 characters")
-            .When(x => !string.IsNullOrEmpty(x.EvolutionInstanceName));
+        RuleFor(x => x.WhatsAppProvider)
+            .Must(BeValidProvider).WithMessage("WhatsApp Provider must be one of: EvolutionAPI, ZApi, OfficialWhatsApp")
+            .When(x => !string.IsNullOrEmpty(x.WhatsAppProvider));
     }
 
     private bool BeValidStatus(string? status)
     {
         if (string.IsNullOrEmpty(status)) return true;
         return status == "Active" || status == "Inactive" || status == "Archived";
+    }
+
+    private bool BeValidProvider(string? provider)
+    {
+        if (string.IsNullOrEmpty(provider)) return true;
+        return provider == "EvolutionAPI" || provider == "ZApi" || provider == "OfficialWhatsApp";
     }
 }
 

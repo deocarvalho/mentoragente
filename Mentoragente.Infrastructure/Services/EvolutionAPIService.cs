@@ -56,12 +56,7 @@ public class EvolutionAPIService : IEvolutionAPIService
     {
         try
         {
-            // Use instance_code, fallback to EvolutionInstanceName for backward compatibility
-            var instanceCode = !string.IsNullOrWhiteSpace(mentorship.InstanceCode) 
-                ? mentorship.InstanceCode 
-                : mentorship.EvolutionInstanceName;
-
-            if (string.IsNullOrWhiteSpace(instanceCode))
+            if (string.IsNullOrWhiteSpace(mentorship.InstanceCode))
             {
                 _logger.LogError("Instance code not configured for mentorship {MentorshipId}", mentorship.Id);
                 throw new InvalidOperationException($"Instance code not configured for mentorship {mentorship.Id}");
@@ -85,7 +80,7 @@ public class EvolutionAPIService : IEvolutionAPIService
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Use global API key from configuration
-            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/message/sendText/{instanceCode}")
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/message/sendText/{mentorship.InstanceCode}")
             {
                 Content = content
             };

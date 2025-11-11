@@ -35,13 +35,6 @@ public class Mentorship : BaseModel
     [Column("instance_code")]
     public string InstanceCode { get; set; } = string.Empty;
     
-    // Deprecated fields - kept for migration compatibility
-    [Column("evolution_api_key")]
-    public string EvolutionApiKey { get; set; } = string.Empty;
-    
-    [Column("evolution_instance_name")]
-    public string EvolutionInstanceName { get; set; } = string.Empty;
-    
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     

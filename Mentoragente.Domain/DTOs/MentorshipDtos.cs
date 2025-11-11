@@ -1,3 +1,5 @@
+using Mentoragente.Domain.Enums;
+
 namespace Mentoragente.Domain.DTOs;
 
 public class MentorshipResponseDto
@@ -9,8 +11,8 @@ public class MentorshipResponseDto
     public int DurationDays { get; set; }
     public string? Description { get; set; }
     public string Status { get; set; } = string.Empty;
-    public string EvolutionApiKey { get; set; } = string.Empty;
-    public string EvolutionInstanceName { get; set; } = string.Empty;
+    public string WhatsAppProvider { get; set; } = string.Empty;
+    public string InstanceCode { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -22,8 +24,8 @@ public class CreateMentorshipRequestDto
     public string AssistantId { get; set; } = string.Empty;
     public int DurationDays { get; set; }
     public string? Description { get; set; }
-    public string EvolutionApiKey { get; set; } = string.Empty;
-    public string EvolutionInstanceName { get; set; } = string.Empty;
+    public string? WhatsAppProvider { get; set; }
+    public string InstanceCode { get; set; } = string.Empty;
 }
 
 public class UpdateMentorshipRequestDto
@@ -33,8 +35,8 @@ public class UpdateMentorshipRequestDto
     public int? DurationDays { get; set; }
     public string? Description { get; set; }
     public string? Status { get; set; }
-    public string? EvolutionApiKey { get; set; }
-    public string? EvolutionInstanceName { get; set; }
+    public string? WhatsAppProvider { get; set; }
+    public string? InstanceCode { get; set; }
 }
 
 public class MentorshipListResponseDto

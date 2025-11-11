@@ -19,8 +19,8 @@ public interface IMentorshipService
         string assistantId,
         int durationDays,
         string? description = null,
-        string? evolutionApiKey = null,
-        string? evolutionInstanceName = null);
+        WhatsAppProvider? whatsAppProvider = null,
+        string? instanceCode = null);
     Task<Mentorship> UpdateMentorshipAsync(
         Guid id,
         string? name = null,
@@ -28,8 +28,8 @@ public interface IMentorshipService
         int? durationDays = null,
         string? description = null,
         MentorshipStatus? status = null,
-        string? evolutionApiKey = null,
-        string? evolutionInstanceName = null);
+        WhatsAppProvider? whatsAppProvider = null,
+        string? instanceCode = null);
     Task<bool> DeleteMentorshipAsync(Guid id);
 }
 
@@ -92,8 +92,8 @@ public class MentorshipService : IMentorshipService
         string assistantId,
         int durationDays,
         string? description = null,
-        string? evolutionApiKey = null,
-        string? evolutionInstanceName = null)
+        WhatsAppProvider? whatsAppProvider = null,
+        string? instanceCode = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name is required", nameof(name));
@@ -104,11 +104,8 @@ public class MentorshipService : IMentorshipService
         if (durationDays <= 0)
             throw new ArgumentException("Duration in days must be greater than 0", nameof(durationDays));
 
-        if (string.IsNullOrWhiteSpace(evolutionApiKey))
-            throw new ArgumentException("Evolution API Key is required", nameof(evolutionApiKey));
-
-        if (string.IsNullOrWhiteSpace(evolutionInstanceName))
-            throw new ArgumentException("Evolution Instance Name is required", nameof(evolutionInstanceName));
+        if (string.IsNullOrWhiteSpace(instanceCode))
+            throw new ArgumentException("Instance code is required", nameof(instanceCode));
 
         // Verify mentor exists
         var mentor = await _userRepository.GetUserByIdAsync(mentorId);
@@ -125,8 +122,8 @@ public class MentorshipService : IMentorshipService
             AssistantId = assistantId,
             DurationDays = durationDays,
             Description = description,
-            EvolutionApiKey = evolutionApiKey,
-            EvolutionInstanceName = evolutionInstanceName,
+            WhatsAppProvider = whatsAppProvider ?? WhatsAppProvider.ZApi,
+            InstanceCode = instanceCode,
             Status = MentorshipStatus.Active
         };
 
@@ -141,8 +138,8 @@ public class MentorshipService : IMentorshipService
         int? durationDays = null,
         string? description = null,
         MentorshipStatus? status = null,
-        string? evolutionApiKey = null,
-        string? evolutionInstanceName = null)
+        WhatsAppProvider? whatsAppProvider = null,
+        string? instanceCode = null)
     {
         var mentorship = await _mentorshipRepository.GetMentorshipByIdAsync(id);
         if (mentorship == null)
@@ -166,11 +163,11 @@ public class MentorshipService : IMentorshipService
         if (status.HasValue)
             mentorship.Status = status.Value;
 
-        if (!string.IsNullOrWhiteSpace(evolutionApiKey))
-            mentorship.EvolutionApiKey = evolutionApiKey;
+        if (whatsAppProvider.HasValue)
+            mentorship.WhatsAppProvider = whatsAppProvider.Value;
 
-        if (!string.IsNullOrWhiteSpace(evolutionInstanceName))
-            mentorship.EvolutionInstanceName = evolutionInstanceName;
+        if (!string.IsNullOrWhiteSpace(instanceCode))
+            mentorship.InstanceCode = instanceCode;
 
         _logger.LogInformation("Updating mentorship {MentorshipId}", id);
         return await _mentorshipRepository.UpdateMentorshipAsync(mentorship);
