@@ -58,7 +58,7 @@ public class AgentSessionsControllerTests
     }
 
     [Fact]
-    public async Task CreateAgentSession_ShouldReturnConflictWhenSessionExists()
+    public async Task CreateAgentSession_ShouldThrowExceptionWhenSessionExists()
     {
         // Arrange
         var request = new CreateAgentSessionRequestDto
@@ -75,11 +75,10 @@ public class AgentSessionsControllerTests
             request.UserId, request.MentorshipId, request.AIContextId))
             .ThrowsAsync(new InvalidOperationException("Active session already exists"));
 
-        // Act
-        var result = await _controller.CreateAgentSession(request);
-
-        // Assert
-        result.Result.Should().BeOfType<ConflictObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            _controller.CreateAgentSession(request));
     }
 
     [Fact]
@@ -217,7 +216,7 @@ public class AgentSessionsControllerTests
     }
 
     [Fact]
-    public async Task UpdateAgentSession_ShouldReturnNotFoundWhenNotFound()
+    public async Task UpdateAgentSession_ShouldThrowExceptionWhenNotFound()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
@@ -231,11 +230,10 @@ public class AgentSessionsControllerTests
             sessionId, It.IsAny<AgentSessionStatus?>(), request.AIContextId, request.LastInteraction))
             .ThrowsAsync(new InvalidOperationException("Session not found"));
 
-        // Act
-        var result = await _controller.UpdateAgentSession(sessionId, request);
-
-        // Assert
-        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            _controller.UpdateAgentSession(sessionId, request));
     }
 
     [Fact]

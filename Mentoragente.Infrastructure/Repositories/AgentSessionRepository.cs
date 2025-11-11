@@ -69,7 +69,7 @@ public class AgentSessionRepository : IAgentSessionRepository
                 .Select("*")
                 .Filter("user_id", Operator.Equals, userId.ToString())
                 .Filter("mentorship_id", Operator.Equals, mentorshipId.ToString())
-                .Filter("status", Operator.Equals, AgentSessionStatus.Active)
+                .Filter("status", Operator.Equals, AgentSessionStatus.Active.ToString())
                 .Get();
 
             return response.Models.FirstOrDefault();
@@ -95,7 +95,7 @@ public class AgentSessionRepository : IAgentSessionRepository
                 .Select("*")
                 .Filter("user_id", Operator.Equals, userId.ToString())
                 .Filter("mentorship_id", Operator.Equals, mentorshipId.ToString())
-                .Filter("status", Operator.Equals, AgentSessionStatus.Active)
+                .Filter("status", Operator.Equals, AgentSessionStatus.Active.ToString())
                 .Get();
 
             var session = sessionResponse.Models.FirstOrDefault();

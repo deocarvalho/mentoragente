@@ -80,7 +80,7 @@ public class UsersControllerAdditionalTests
     }
 
     [Fact]
-    public async Task UpdateUser_ShouldReturnNotFoundWhenUserNotFound()
+    public async Task UpdateUser_ShouldThrowExceptionWhenUserNotFound()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -94,11 +94,11 @@ public class UsersControllerAdditionalTests
         _mockUserService.Setup(x => x.UpdateUserAsync(userId, "New Name", null, null))
             .ThrowsAsync(new InvalidOperationException($"User with ID {userId} not found"));
 
-        // Act
-        var result = await _controller.UpdateUser(userId, request);
-
-        // Assert
-        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        // In unit tests, the exception will bubble up (integration tests verify middleware handles it)
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            _controller.UpdateUser(userId, request));
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class UsersControllerAdditionalTests
     }
 
     [Fact]
-    public async Task CreateUser_ShouldReturnConflictWhenUserExists()
+    public async Task CreateUser_ShouldThrowExceptionWhenUserExists()
     {
         // Arrange
         var request = new CreateUserRequestDto
@@ -210,11 +210,11 @@ public class UsersControllerAdditionalTests
         _mockUserService.Setup(x => x.CreateUserAsync(request.PhoneNumber, request.Name, request.Email))
             .ThrowsAsync(new InvalidOperationException("User already exists"));
 
-        // Act
-        var result = await _controller.CreateUser(request);
-
-        // Assert
-        result.Result.Should().BeOfType<ConflictObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        // In unit tests, the exception will bubble up (integration tests verify middleware handles it)
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            _controller.CreateUser(request));
     }
 
     [Fact]

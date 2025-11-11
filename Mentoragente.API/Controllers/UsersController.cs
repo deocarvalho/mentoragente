@@ -36,33 +36,25 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<UserListResponseDto>> GetUsers([FromQuery] PaginationRequestDto pagination)
     {
-        try
+        var validator = new PaginationRequestValidator();
+        var validationResult = await validator.ValidateAsync(pagination);
+        if (!validationResult.IsValid)
         {
-            var validator = new PaginationRequestValidator();
-            var validationResult = await validator.ValidateAsync(pagination);
-            if (!validationResult.IsValid)
-            {
-                return BadRequest(validationResult.Errors);
-            }
-
-            var result = await _userService.GetUsersAsync(pagination.Page, pagination.PageSize);
-            
-            var response = new UserListResponseDto
-            {
-                Users = result.Items.Select(u => u.ToDto()).ToList(),
-                Total = result.Total,
-                Page = result.Page,
-                PageSize = result.PageSize,
-                TotalPages = result.TotalPages
-            };
-
-            return Ok(response);
+            return BadRequest(validationResult.Errors);
         }
-        catch (Exception ex)
+
+        var result = await _userService.GetUsersAsync(pagination.Page, pagination.PageSize);
+        
+        var response = new UserListResponseDto
         {
-            _logger.LogError(ex, "Error getting users");
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+            Users = result.Items.Select(u => u.ToDto()).ToList(),
+            Total = result.Total,
+            Page = result.Page,
+            PageSize = result.PageSize,
+            TotalPages = result.TotalPages
+        };
+
+        return Ok(response);
     }
 
     /// <summary>
@@ -71,21 +63,13 @@ public class UsersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<UserResponseDto>> GetUserById(Guid id)
     {
-        try
+        var user = await _userService.GetUserByIdAsync(id);
+        if (user == null)
         {
-            var user = await _userService.GetUserByIdAsync(id);
-            if (user == null)
-            {
-                return NotFound(new { message = $"User with ID {id} not found" });
-            }
+            return NotFound(new { message = $"User with ID {id} not found" });
+        }
 
-            return Ok(user.ToDto());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting user {UserId}", id);
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+        return Ok(user.ToDto());
     }
 
     /// <summary>
@@ -94,21 +78,13 @@ public class UsersController : ControllerBase
     [HttpGet("phone/{phoneNumber}")]
     public async Task<ActionResult<UserResponseDto>> GetUserByPhone(string phoneNumber)
     {
-        try
+        var user = await _userService.GetUserByPhoneAsync(phoneNumber);
+        if (user == null)
         {
-            var user = await _userService.GetUserByPhoneAsync(phoneNumber);
-            if (user == null)
-            {
-                return NotFound(new { message = $"User with phone number {phoneNumber} not found" });
-            }
+            return NotFound(new { message = $"User with phone number {phoneNumber} not found" });
+        }
 
-            return Ok(user.ToDto());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting user by phone {PhoneNumber}", phoneNumber);
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+        return Ok(user.ToDto());
     }
 
     /// <summary>
@@ -117,34 +93,18 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserRequestDto request)
     {
-        try
+        var validationResult = await _createValidator.ValidateAsync(request);
+        if (!validationResult.IsValid)
         {
-            var validationResult = await _createValidator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                return BadRequest(validationResult.Errors);
-            }
+            return BadRequest(validationResult.Errors);
+        }
 
-            var user = await _userService.CreateUserAsync(
-                request.PhoneNumber,
-                request.Name,
-                request.Email);
+        var user = await _userService.CreateUserAsync(
+            request.PhoneNumber,
+            request.Name,
+            request.Email);
 
-            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user.ToDto());
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating user");
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+        return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user.ToDto());
     }
 
     /// <summary>
@@ -153,31 +113,19 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(Guid id, [FromBody] UpdateUserRequestDto request)
     {
-        try
+        var validationResult = await _updateValidator.ValidateAsync(request);
+        if (!validationResult.IsValid)
         {
-            var validationResult = await _updateValidator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                return BadRequest(validationResult.Errors);
-            }
+            return BadRequest(validationResult.Errors);
+        }
 
-            var user = await _userService.UpdateUserAsync(
-                id,
-                request.Name,
-                request.Email,
-                EntityToDtoMappings.ParseUserStatus(request.Status));
+        var user = await _userService.UpdateUserAsync(
+            id,
+            request.Name,
+            request.Email,
+            EntityToDtoMappings.ParseUserStatus(request.Status));
 
-            return Ok(user.ToDto());
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating user {UserId}", id);
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+        return Ok(user.ToDto());
     }
 
     /// <summary>
@@ -186,20 +134,12 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteUser(Guid id)
     {
-        try
+        var deleted = await _userService.DeleteUserAsync(id);
+        if (!deleted)
         {
-            var deleted = await _userService.DeleteUserAsync(id);
-            if (!deleted)
-            {
-                return NotFound(new { message = $"User with ID {id} not found" });
-            }
+            return NotFound(new { message = $"User with ID {id} not found" });
+        }
 
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting user {UserId}", id);
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+        return NoContent();
     }
 }

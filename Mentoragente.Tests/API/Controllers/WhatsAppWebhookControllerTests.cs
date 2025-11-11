@@ -16,7 +16,6 @@ public class WhatsAppWebhookControllerTests
 {
     private readonly Mock<IMessageProcessor> _mockMessageProcessor;
     private readonly Mock<IEvolutionAPIService> _mockEvolutionAPIService;
-    private readonly Mock<IMentorshipRepository> _mockMentorshipRepository;
     private readonly Mock<ILogger<WhatsAppWebhookController>> _mockLogger;
     private readonly WhatsAppWebhookController _controller;
 
@@ -24,20 +23,45 @@ public class WhatsAppWebhookControllerTests
     {
         _mockMessageProcessor = new Mock<IMessageProcessor>();
         _mockEvolutionAPIService = new Mock<IEvolutionAPIService>();
-        _mockMentorshipRepository = new Mock<IMentorshipRepository>();
         _mockLogger = new Mock<ILogger<WhatsAppWebhookController>>();
 
         _controller = new WhatsAppWebhookController(
             _mockMessageProcessor.Object,
             _mockEvolutionAPIService.Object,
-            _mockMentorshipRepository.Object,
             _mockLogger.Object);
+    }
+
+    [Fact]
+    public async Task ReceiveMessage_ShouldReturnBadRequest_WhenMentorshipIdIsEmpty()
+    {
+        // Arrange
+        var webhook = new WhatsAppWebhookDto
+        {
+            Event = "messages.upsert",
+            Data = new WebhookData
+            {
+                Key = new WebhookKey
+                {
+                    RemoteJid = "5511999999999@s.whatsapp.net",
+                    FromMe = false
+                },
+                Message = new WebhookMessage { Conversation = "Hello" }
+            }
+        };
+
+        // Act
+        var result = await _controller.ReceiveMessage(webhook, Guid.Empty);
+
+        // Assert
+        result.Should().BeOfType<BadRequestObjectResult>();
+        _mockMessageProcessor.Verify(x => x.ProcessMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
     public async Task ReceiveMessage_ShouldIgnoreMessagesFromSelf()
     {
         // Arrange
+        var mentorshipId = Guid.NewGuid();
         var webhook = new WhatsAppWebhookDto
         {
             Event = "messages.upsert",
@@ -53,7 +77,7 @@ public class WhatsAppWebhookControllerTests
         };
 
         // Act
-        var result = await _controller.ReceiveMessage(webhook);
+        var result = await _controller.ReceiveMessage(webhook, mentorshipId);
 
         // Assert
         result.Should().BeOfType<OkObjectResult>();
@@ -64,6 +88,7 @@ public class WhatsAppWebhookControllerTests
     public async Task ReceiveMessage_ShouldIgnoreEmptyMessages()
     {
         // Arrange
+        var mentorshipId = Guid.NewGuid();
         var webhook = new WhatsAppWebhookDto
         {
             Event = "messages.upsert",
@@ -79,7 +104,7 @@ public class WhatsAppWebhookControllerTests
         };
 
         // Act
-        var result = await _controller.ReceiveMessage(webhook);
+        var result = await _controller.ReceiveMessage(webhook, mentorshipId);
 
         // Assert
         result.Should().BeOfType<OkObjectResult>();
@@ -90,6 +115,7 @@ public class WhatsAppWebhookControllerTests
     public async Task ReceiveMessage_ShouldHandleInvalidPhoneNumberFormat()
     {
         // Arrange
+        var mentorshipId = Guid.NewGuid();
         var webhook = new WhatsAppWebhookDto
         {
             Event = "messages.upsert",
@@ -105,7 +131,7 @@ public class WhatsAppWebhookControllerTests
         };
 
         // Act
-        var result = await _controller.ReceiveMessage(webhook);
+        var result = await _controller.ReceiveMessage(webhook, mentorshipId);
 
         // Assert
         result.Should().BeOfType<OkObjectResult>();
@@ -116,6 +142,7 @@ public class WhatsAppWebhookControllerTests
     public async Task ReceiveMessage_ShouldHandleNullData()
     {
         // Arrange
+        var mentorshipId = Guid.NewGuid();
         var webhook = new WhatsAppWebhookDto
         {
             Event = "messages.upsert",
@@ -123,7 +150,7 @@ public class WhatsAppWebhookControllerTests
         };
 
         // Act
-        var result = await _controller.ReceiveMessage(webhook);
+        var result = await _controller.ReceiveMessage(webhook, mentorshipId);
 
         // Assert
         result.Should().BeOfType<OkObjectResult>();
@@ -134,6 +161,7 @@ public class WhatsAppWebhookControllerTests
     public async Task ReceiveMessage_ShouldHandleDifferentEventTypes()
     {
         // Arrange
+        var mentorshipId = Guid.NewGuid();
         var webhook = new WhatsAppWebhookDto
         {
             Event = "connection.update",
@@ -149,7 +177,7 @@ public class WhatsAppWebhookControllerTests
         };
 
         // Act
-        var result = await _controller.ReceiveMessage(webhook);
+        var result = await _controller.ReceiveMessage(webhook, mentorshipId);
 
         // Assert
         result.Should().BeOfType<OkObjectResult>();
@@ -175,13 +203,18 @@ public class WhatsAppWebhookControllerTests
             }
         };
 
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(It.IsAny<Guid>()))
-            .ReturnsAsync(new Mentorship { Id = mentorshipId });
+
+        var mentorship = new Mentorship { Id = mentorshipId, DurationDays = 30 };
+        var processingResult = new MessageProcessingResult
+        {
+            Response = "Response",
+            Mentorship = mentorship
+        };
 
         _mockMessageProcessor.Setup(x => x.ProcessMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>()))
-            .ReturnsAsync("Response");
+            .ReturnsAsync(processingResult);
 
-        _mockEvolutionAPIService.Setup(x => x.SendMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>()))
+        _mockEvolutionAPIService.Setup(x => x.SendMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Mentorship>()))
             .ReturnsAsync(false);
 
         // Act & Assert

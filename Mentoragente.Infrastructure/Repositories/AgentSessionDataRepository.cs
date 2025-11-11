@@ -59,6 +59,11 @@ public class AgentSessionDataRepository : IAgentSessionDataRepository
     {
         try
         {
+            if (data.AgentSessionId == Guid.Empty)
+            {
+                throw new ArgumentException("AgentSessionId cannot be empty", nameof(data));
+            }
+
             data.CreatedAt = DateTime.UtcNow;
             data.UpdatedAt = DateTime.UtcNow;
 

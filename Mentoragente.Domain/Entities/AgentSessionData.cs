@@ -7,6 +7,7 @@ namespace Mentoragente.Domain.Entities;
 public class AgentSessionData : BaseModel
 {
     [PrimaryKey("agent_session_id")]
+    [Column("agent_session_id")]
     public Guid AgentSessionId { get; set; }
     
     [Column("access_start_date")]

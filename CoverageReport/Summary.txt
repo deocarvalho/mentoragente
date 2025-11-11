@@ -1,0 +1,91 @@
+Summary
+  Generated on: 11/9/2025 - 12:25:26 AM
+  Coverage date: 11/6/2025 - 11:34:58 AM - 11/9/2025 - 12:25:18 AM
+  Parser: MultiReport (9x Cobertura)
+  Assemblies: 4
+  Classes: 63
+  Files: 41
+  Line coverage: 59.1%
+  Covered lines: 1558
+  Uncovered lines: 1077
+  Coverable lines: 2635
+  Total lines: 4073
+  Branch coverage: 65.1% (288 of 442)
+  Covered branches: 288
+  Total branches: 442
+  Method coverage: 80.1% (283 of 353)
+  Full method coverage: 65.7% (232 of 353)
+  Covered methods: 283
+  Fully covered methods: 232
+  Total methods: 353
+
+Mentoragente.API                                                           77.8%
+  Mentoragente.API.Controllers.AgentSessionsController                     71.7%
+  Mentoragente.API.Controllers.EnrollmentsController                       76.6%
+  Mentoragente.API.Controllers.MentorshipsController                       78.8%
+  Mentoragente.API.Controllers.UsersController                             73.8%
+  Mentoragente.API.Controllers.WhatsAppWebhookController                     87%
+  Mentoragente.API.Middleware.ApiKeyAuthenticationHandler                  47.8%
+  Mentoragente.API.Middleware.ApiKeyAuthenticationOptions                   100%
+  Mentoragente.API.Program                                                  100%
+
+Mentoragente.Application                                                     77%
+  Mentoragente.Application.Mappings.EntityToDtoMappings                    96.3%
+  Mentoragente.Application.Models.PagedResult<T>                           87.5%
+  Mentoragente.Application.Services.AccessValidationResult                  100%
+  Mentoragente.Application.Services.AccessValidationService                   0%
+  Mentoragente.Application.Services.AgentSessionContext                     100%
+  Mentoragente.Application.Services.AgentSessionOrchestrationService          0%
+  Mentoragente.Application.Services.AgentSessionService                    99.2%
+  Mentoragente.Application.Services.MentorshipService                        95%
+  Mentoragente.Application.Services.MessageProcessingResult                 100%
+  Mentoragente.Application.Services.MessageProcessor                       85.5%
+  Mentoragente.Application.Services.SessionUpdateService                      0%
+  Mentoragente.Application.Services.UserOrchestrationService                  0%
+  Mentoragente.Application.Services.UserService                             100%
+  Mentoragente.Application.Validators.CreateAgentSessionRequestValidator    100%
+  Mentoragente.Application.Validators.CreateEnrollmentRequestValidator        0%
+  Mentoragente.Application.Validators.CreateMentorshipRequestValidator      100%
+  Mentoragente.Application.Validators.CreateUserRequestValidator            100%
+  Mentoragente.Application.Validators.PaginationRequestValidator            100%
+  Mentoragente.Application.Validators.UpdateAgentSessionRequestValidator    100%
+  Mentoragente.Application.Validators.UpdateMentorshipRequestValidator      100%
+  Mentoragente.Application.Validators.UpdateUserRequestValidator            100%
+
+Mentoragente.Domain                                                         100%
+  Mentoragente.Domain.DTOs.AgentSessionListResponseDto                      100%
+  Mentoragente.Domain.DTOs.AgentSessionResponseDto                          100%
+  Mentoragente.Domain.DTOs.CreateAgentSessionRequestDto                     100%
+  Mentoragente.Domain.DTOs.CreateEnrollmentRequestDto                       100%
+  Mentoragente.Domain.DTOs.CreateMentorshipRequestDto                       100%
+  Mentoragente.Domain.DTOs.CreateUserRequestDto                             100%
+  Mentoragente.Domain.DTOs.EnrollmentResponseDto                            100%
+  Mentoragente.Domain.DTOs.MentorshipListResponseDto                        100%
+  Mentoragente.Domain.DTOs.MentorshipResponseDto                            100%
+  Mentoragente.Domain.DTOs.PaginationRequestDto                             100%
+  Mentoragente.Domain.DTOs.UpdateAgentSessionRequestDto                     100%
+  Mentoragente.Domain.DTOs.UpdateMentorshipRequestDto                       100%
+  Mentoragente.Domain.DTOs.UpdateUserRequestDto                             100%
+  Mentoragente.Domain.DTOs.UserListResponseDto                              100%
+  Mentoragente.Domain.DTOs.UserResponseDto                                  100%
+  Mentoragente.Domain.Entities.AgentSession                                 100%
+  Mentoragente.Domain.Entities.AgentSessionData                             100%
+  Mentoragente.Domain.Entities.Conversation                                 100%
+  Mentoragente.Domain.Entities.Mentorship                                   100%
+  Mentoragente.Domain.Entities.User                                         100%
+  Mentoragente.Domain.Models.AgentSessionWithData                           100%
+  Mentoragente.Domain.Models.ChatMessage                                    100%
+  Mentoragente.Domain.Models.WebhookData                                    100%
+  Mentoragente.Domain.Models.WebhookKey                                     100%
+  Mentoragente.Domain.Models.WebhookMessage                                 100%
+  Mentoragente.Domain.Models.WhatsAppWebhookDto                             100%
+
+Mentoragente.Infrastructure                                                27.4%
+  Mentoragente.Infrastructure.Extensions.JsonConfigurationExtensions        100%
+  Mentoragente.Infrastructure.Repositories.AgentSessionDataRepository      16.4%
+  Mentoragente.Infrastructure.Repositories.AgentSessionRepository           6.4%
+  Mentoragente.Infrastructure.Repositories.ConversationRepository          11.8%
+  Mentoragente.Infrastructure.Repositories.MentorshipRepository             9.4%
+  Mentoragente.Infrastructure.Repositories.UserRepository                  10.2%
+  Mentoragente.Infrastructure.Services.EvolutionAPIService                 90.2%
+  Mentoragente.Infrastructure.Services.OpenAIAssistantService              96.6%

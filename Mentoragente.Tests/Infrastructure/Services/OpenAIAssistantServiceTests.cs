@@ -84,24 +84,20 @@ public class OpenAIAssistantServiceTests
     }
 
     [Fact]
-    public async Task CreateThreadAsync_ShouldUseDefaultBaseUrl()
+    public async Task CreateThreadAsync_ShouldThrowWhenBaseUrlNotConfigured()
     {
         // Arrange
-        var expectedThreadId = "thread_abc123";
-        var responseJson = JsonSerializer.Serialize(new { id = expectedThreadId });
-        
         _mockConfiguration.Setup(c => c["OpenAI:ApiKey"]).Returns("test-key");
         _mockConfiguration.Setup(c => c["OpenAI:BaseUrl"]).Returns((string?)null);
         
-        var handler = MockHttpMessageHandler.CreateSuccessHandler(responseJson);
-        var httpClient = new HttpClient(handler);
-        var service = new OpenAIAssistantService(httpClient, _mockConfiguration.Object, _mockLogger.Object);
+        var httpClient = new HttpClient();
 
-        // Act
-        var result = await service.CreateThreadAsync();
-
-        // Assert
-        result.Should().NotBeNullOrEmpty();
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        {
+            var service = new OpenAIAssistantService(httpClient, _mockConfiguration.Object, _mockLogger.Object);
+            return Task.CompletedTask;
+        });
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Mentoragente.Domain.Entities;
+using Mentoragente.Domain.Enums;
 using Mentoragente.Domain.Interfaces;
 using Supabase.Postgrest.Exceptions;
 using static Supabase.Postgrest.Constants;
@@ -160,7 +161,7 @@ public class MentorshipRepository : IMentorshipRepository
             var response = await _supabaseClient
                 .From<Mentorship>()
                 .Select("*")
-                .Filter("status", Operator.Equals, "Active")
+                .Filter("status", Operator.Equals, MentorshipStatus.Active.ToString())
                 .Order("created_at", Ordering.Descending)
                 .Range(skip, skip + take - 1)
                 .Get();
@@ -186,7 +187,7 @@ public class MentorshipRepository : IMentorshipRepository
             var response = await _supabaseClient
                 .From<Mentorship>()
                 .Select("*")
-                .Filter("status", Operator.Equals, "Active")
+                .Filter("status", Operator.Equals, MentorshipStatus.Active.ToString())
                 .Get();
 
             return response.Models.Count;

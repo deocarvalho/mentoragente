@@ -5,39 +5,44 @@ using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
-using Mentoragente.Domain.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Tests.Application.Services;
 
 public class MessageProcessorAdditionalTests
 {
-    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IUserOrchestrationService> _mockUserOrchestrationService;
     private readonly Mock<IMentorshipRepository> _mockMentorshipRepository;
-    private readonly Mock<IAgentSessionRepository> _mockAgentSessionRepository;
-    private readonly Mock<IAgentSessionDataRepository> _mockAgentSessionDataRepository;
+    private readonly Mock<IAgentSessionOrchestrationService> _mockSessionOrchestrationService;
+    private readonly Mock<IAccessValidationService> _mockAccessValidationService;
     private readonly Mock<IConversationRepository> _mockConversationRepository;
     private readonly Mock<IOpenAIAssistantService> _mockOpenAIAssistantService;
+    private readonly Mock<IEvolutionAPIService> _mockEvolutionAPIService;
+    private readonly Mock<ISessionUpdateService> _mockSessionUpdateService;
     private readonly Mock<ILogger<MessageProcessor>> _mockLogger;
     private readonly MessageProcessor _messageProcessor;
 
     public MessageProcessorAdditionalTests()
     {
-        _mockUserRepository = new Mock<IUserRepository>();
+        _mockUserOrchestrationService = new Mock<IUserOrchestrationService>();
         _mockMentorshipRepository = new Mock<IMentorshipRepository>();
-        _mockAgentSessionRepository = new Mock<IAgentSessionRepository>();
-        _mockAgentSessionDataRepository = new Mock<IAgentSessionDataRepository>();
+        _mockSessionOrchestrationService = new Mock<IAgentSessionOrchestrationService>();
+        _mockAccessValidationService = new Mock<IAccessValidationService>();
         _mockConversationRepository = new Mock<IConversationRepository>();
         _mockOpenAIAssistantService = new Mock<IOpenAIAssistantService>();
+        _mockEvolutionAPIService = new Mock<IEvolutionAPIService>();
+        _mockSessionUpdateService = new Mock<ISessionUpdateService>();
         _mockLogger = new Mock<ILogger<MessageProcessor>>();
         
         _messageProcessor = new MessageProcessor(
-            _mockUserRepository.Object,
+            _mockUserOrchestrationService.Object,
             _mockMentorshipRepository.Object,
-            _mockAgentSessionRepository.Object,
-            _mockAgentSessionDataRepository.Object,
+            _mockSessionOrchestrationService.Object,
+            _mockAccessValidationService.Object,
             _mockConversationRepository.Object,
             _mockOpenAIAssistantService.Object,
+            _mockEvolutionAPIService.Object,
+            _mockSessionUpdateService.Object,
             _mockLogger.Object);
     }
 
@@ -52,7 +57,7 @@ public class MessageProcessorAdditionalTests
         
         var user = new User { Id = userId, PhoneNumber = phoneNumber };
 
-        _mockUserRepository.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
+        _mockUserOrchestrationService.Setup(x => x.GetOrCreateUserAsync(phoneNumber))
             .ReturnsAsync(user);
 
         _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
@@ -96,27 +101,26 @@ public class MessageProcessorAdditionalTests
             AgentSessionId = agentSessionId, 
             AccessEndDate = DateTime.UtcNow.AddDays(10) 
         };
-
-        _mockUserRepository.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
-            .ReturnsAsync(user);
-
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
-            .ReturnsAsync(mentorship);
-
-        var sessionWithData = new AgentSessionWithData
+        var sessionContext = new AgentSessionContext
         {
             Session = agentSession,
             Data = sessionData
         };
 
-        _mockAgentSessionRepository.Setup(x => x.GetActiveAgentSessionWithDataAsync(userId, mentorshipId))
-            .ReturnsAsync(sessionWithData);
+        _mockUserOrchestrationService.Setup(x => x.GetOrCreateUserAsync(phoneNumber))
+            .ReturnsAsync(user);
 
-        _mockAgentSessionRepository.Setup(x => x.UpdateAgentSessionAsync(It.IsAny<AgentSession>()))
-            .ReturnsAsync((AgentSession s) => s);
+        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+            .ReturnsAsync(mentorship);
 
-        _mockAgentSessionDataRepository.Setup(x => x.UpdateAgentSessionDataAsync(It.IsAny<AgentSessionData>()))
-            .ReturnsAsync((AgentSessionData data) => data);
+        _mockSessionOrchestrationService.Setup(x => x.GetOrCreateSessionContextAsync(userId, mentorshipId, mentorship.DurationDays))
+            .ReturnsAsync(sessionContext);
+
+        _mockAccessValidationService.Setup(x => x.ValidateAccessAsync(agentSession, sessionData))
+            .ReturnsAsync(new AccessValidationResult { IsValid = true });
+
+        _mockOpenAIAssistantService.Setup(x => x.AddUserMessageAsync(threadId, messageText))
+            .Returns(Task.CompletedTask);
 
         _mockOpenAIAssistantService.Setup(x => x.RunAssistantAsync(threadId, mentorship.AssistantId))
             .ThrowsAsync(new Exception("OpenAI API error"));
@@ -126,7 +130,8 @@ public class MessageProcessorAdditionalTests
             .Should().ThrowAsync<Exception>()
             .WithMessage("*OpenAI API error*");
         
-        _mockConversationRepository.Verify(x => x.AddMessageAsync(agentSessionId, "user", messageText), Times.Once);
+        // Note: When exception occurs, conversation may not be saved depending on when exception is thrown
+        _mockOpenAIAssistantService.Verify(x => x.AddUserMessageAsync(threadId, messageText), Times.Once);
     }
 
     [Fact]
@@ -163,27 +168,26 @@ public class MessageProcessorAdditionalTests
             AgentSessionId = agentSessionId, 
             AccessEndDate = DateTime.UtcNow.AddDays(10) 
         };
-
-        _mockUserRepository.Setup(x => x.GetUserByPhoneAsync(phoneNumber))
-            .ReturnsAsync(user);
-
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
-            .ReturnsAsync(mentorship);
-
-        var sessionWithData = new AgentSessionWithData
+        var sessionContext = new AgentSessionContext
         {
             Session = agentSession,
             Data = sessionData
         };
 
-        _mockAgentSessionRepository.Setup(x => x.GetActiveAgentSessionWithDataAsync(userId, mentorshipId))
-            .ReturnsAsync(sessionWithData);
+        _mockUserOrchestrationService.Setup(x => x.GetOrCreateUserAsync(phoneNumber))
+            .ReturnsAsync(user);
 
-        _mockAgentSessionRepository.Setup(x => x.UpdateAgentSessionAsync(It.IsAny<AgentSession>()))
-            .ReturnsAsync((AgentSession s) => s);
+        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+            .ReturnsAsync(mentorship);
 
-        _mockAgentSessionDataRepository.Setup(x => x.UpdateAgentSessionDataAsync(It.IsAny<AgentSessionData>()))
-            .ReturnsAsync((AgentSessionData data) => data);
+        _mockSessionOrchestrationService.Setup(x => x.GetOrCreateSessionContextAsync(userId, mentorshipId, mentorship.DurationDays))
+            .ReturnsAsync(sessionContext);
+
+        _mockAccessValidationService.Setup(x => x.ValidateAccessAsync(agentSession, sessionData))
+            .ReturnsAsync(new AccessValidationResult { IsValid = true });
+
+        _mockOpenAIAssistantService.Setup(x => x.AddUserMessageAsync(threadId, messageText))
+            .Returns(Task.CompletedTask);
 
         _mockOpenAIAssistantService.Setup(x => x.RunAssistantAsync(threadId, mentorship.AssistantId))
             .ReturnsAsync(responseText);
@@ -192,14 +196,10 @@ public class MessageProcessorAdditionalTests
         await _messageProcessor.ProcessMessageAsync(phoneNumber, messageText, mentorshipId);
 
         // Assert
-        _mockAgentSessionRepository.Verify(x => x.UpdateAgentSessionAsync(
-            It.Is<AgentSession>(s => 
-                s.Id == agentSessionId && 
-                s.LastInteraction.HasValue &&
-                s.TotalMessages == 7)), // 5 + 2 (user + assistant)
+        _mockSessionUpdateService.Verify(x => x.UpdateSessionAfterMessageAsync(
+            It.Is<AgentSession>(s => s.Id == agentSessionId && s.TotalMessages == 5),
+            It.Is<AgentSessionData>(d => d.AgentSessionId == agentSessionId),
+            mentorship.DurationDays),
             Times.Once);
-        
-        _mockAgentSessionDataRepository.Verify(x => x.UpdateAgentSessionDataAsync(It.IsAny<AgentSessionData>()), Times.Once);
     }
 }
-

@@ -29,6 +29,13 @@ public class Mentorship : BaseModel
     [Column("status")]
     public MentorshipStatus Status { get; set; } = MentorshipStatus.Active;
     
+    [Column("whatsapp_provider")]
+    public WhatsAppProvider WhatsAppProvider { get; set; } = WhatsAppProvider.ZApi;
+    
+    [Column("instance_code")]
+    public string InstanceCode { get; set; } = string.Empty;
+    
+    // Deprecated fields - kept for migration compatibility
     [Column("evolution_api_key")]
     public string EvolutionApiKey { get; set; } = string.Empty;
     

@@ -24,7 +24,14 @@ public class OpenAIAssistantService : IOpenAIAssistantService
         _logger = logger;
 
         var apiKey = _configuration["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI API key not configured");
-        var baseUrl = _configuration["OpenAI:BaseUrl"] ?? "https://api.openai.com/v1";
+        var baseUrl = _configuration["OpenAI:BaseUrl"] ?? throw new InvalidOperationException("OpenAI API base address not configured");
+
+        // Ensure baseUrl ends with a slash for proper URI combination
+        // HttpClient requires BaseAddress to end with / for relative URIs to append correctly
+        if (!baseUrl.EndsWith("/"))
+        {
+            baseUrl = baseUrl + "/";
+        }
 
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -33,6 +40,24 @@ public class OpenAIAssistantService : IOpenAIAssistantService
 
     private async Task<JsonNode> PostJsonAsync(string endpoint, object payload)
     {
+        // Remove leading slash if present - HttpClient will combine with BaseAddress
+        // If BaseAddress is "https://api.openai.com/v1" and endpoint is "threads",
+        // it becomes "https://api.openai.com/v1/threads"
+        if (endpoint.StartsWith("/"))
+        {
+            endpoint = endpoint.TrimStart('/');
+        }
+
+        // Construct full URL for logging - ensure proper combination
+        var baseAddress = _httpClient.BaseAddress?.ToString() ?? "";
+        // If baseAddress doesn't end with /, add it for proper combination
+        if (!baseAddress.EndsWith("/") && !string.IsNullOrEmpty(endpoint))
+        {
+            baseAddress = baseAddress + "/";
+        }
+        var fullUrl = baseAddress + endpoint;
+        _logger.LogDebug("OpenAI API request: POST {Url}", fullUrl);
+
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
         var response = await _httpClient.PostAsync(endpoint, content);
         var json = await response.Content.ReadAsStringAsync();

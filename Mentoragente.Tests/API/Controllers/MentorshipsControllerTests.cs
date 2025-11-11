@@ -186,7 +186,7 @@ public class MentorshipsControllerTests
     }
 
     [Fact]
-    public async Task CreateMentorship_ShouldReturnNotFoundWhenMentorNotFound()
+    public async Task CreateMentorship_ShouldThrowExceptionWhenMentorNotFound()
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -208,15 +208,14 @@ public class MentorshipsControllerTests
             request.Description, request.EvolutionApiKey, request.EvolutionInstanceName))
             .ThrowsAsync(new InvalidOperationException("Mentor not found"));
 
-        // Act
-        var result = await _controller.CreateMentorship(request);
-
-        // Assert
-        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            _controller.CreateMentorship(request));
     }
 
     [Fact]
-    public async Task CreateMentorship_ShouldReturnBadRequestWhenArgumentException()
+    public async Task CreateMentorship_ShouldThrowExceptionWhenArgumentException()
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -238,11 +237,10 @@ public class MentorshipsControllerTests
             request.Description, request.EvolutionApiKey, request.EvolutionInstanceName))
             .ThrowsAsync(new ArgumentException("Name is required"));
 
-        // Act
-        var result = await _controller.CreateMentorship(request);
-
-        // Assert
-        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        await Assert.ThrowsAsync<ArgumentException>(() => 
+            _controller.CreateMentorship(request));
     }
 
     [Fact]
@@ -270,7 +268,7 @@ public class MentorshipsControllerTests
     }
 
     [Fact]
-    public async Task UpdateMentorship_ShouldReturnNotFoundWhenNotFound()
+    public async Task UpdateMentorship_ShouldThrowExceptionWhenNotFound()
     {
         // Arrange
         var mentorshipId = Guid.NewGuid();
@@ -285,11 +283,10 @@ public class MentorshipsControllerTests
             request.Description, null, request.EvolutionApiKey, request.EvolutionInstanceName))
             .ThrowsAsync(new InvalidOperationException("Mentorship not found"));
 
-        // Act
-        var result = await _controller.UpdateMentorship(mentorshipId, request);
-
-        // Assert
-        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        // Act & Assert
+        // Exception handling is now done by GlobalExceptionHandlingMiddleware
+        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+            _controller.UpdateMentorship(mentorshipId, request));
     }
 
     [Fact]
