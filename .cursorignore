@@ -1,0 +1,48 @@
+# Cursor ignore file
+# Arquivos e diretórios que o Cursor deve ignorar
+
+# Build outputs
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# Test results
+TestResults/
+[Tt]est[Rr]esult*/
+
+# Coverage reports
+CoverageReport/
+*.coverage
+*.coveragexml
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# Node modules (se houver)
+node_modules/
+
+# Docker
+docker-compose.override.yml
+
+# Note: .env NÃO está aqui - queremos que o Cursor possa ler o arquivo .env
+# Mas ele ainda está no .gitignore para não ser commitado
+
