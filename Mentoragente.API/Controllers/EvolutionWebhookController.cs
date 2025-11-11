@@ -15,18 +15,18 @@ public class EvolutionWebhookController : ControllerBase
 {
     private readonly IMessageProcessor _messageProcessor;
     private readonly IWhatsAppServiceFactory _whatsAppServiceFactory;
-    private readonly WhatsAppWebhookAdapterFactory _adapterFactory;
+    private readonly EvolutionWebhookAdapter _adapter;
     private readonly ILogger<EvolutionWebhookController> _logger;
 
     public EvolutionWebhookController(
         IMessageProcessor messageProcessor,
         IWhatsAppServiceFactory whatsAppServiceFactory,
-        WhatsAppWebhookAdapterFactory adapterFactory,
+        EvolutionWebhookAdapter adapter,
         ILogger<EvolutionWebhookController> logger)
     {
         _messageProcessor = messageProcessor;
         _whatsAppServiceFactory = whatsAppServiceFactory;
-        _adapterFactory = adapterFactory;
+        _adapter = adapter;
         _logger = logger;
     }
 
@@ -51,14 +51,7 @@ public class EvolutionWebhookController : ControllerBase
         }
 
         // Adapt Evolution-specific DTO to generic model
-        var adapter = _adapterFactory.GetAdapter(webhook);
-        if (adapter == null)
-        {
-            _logger.LogWarning("No adapter found for Evolution webhook");
-            return BadRequest(new { success = false, message = "Invalid webhook format" });
-        }
-
-        var genericMessage = adapter.Adapt(webhook);
+        var genericMessage = _adapter.Adapt(webhook);
         if (genericMessage == null)
         {
             return Ok(new { success = true, message = "Message ignored" });

@@ -15,18 +15,18 @@ public class ZApiWebhookController : ControllerBase
 {
     private readonly IMessageProcessor _messageProcessor;
     private readonly IWhatsAppServiceFactory _whatsAppServiceFactory;
-    private readonly WhatsAppWebhookAdapterFactory _adapterFactory;
+    private readonly ZApiWebhookAdapter _adapter;
     private readonly ILogger<ZApiWebhookController> _logger;
 
     public ZApiWebhookController(
         IMessageProcessor messageProcessor,
         IWhatsAppServiceFactory whatsAppServiceFactory,
-        WhatsAppWebhookAdapterFactory adapterFactory,
+        ZApiWebhookAdapter adapter,
         ILogger<ZApiWebhookController> logger)
     {
         _messageProcessor = messageProcessor;
         _whatsAppServiceFactory = whatsAppServiceFactory;
-        _adapterFactory = adapterFactory;
+        _adapter = adapter;
         _logger = logger;
     }
 
@@ -51,14 +51,7 @@ public class ZApiWebhookController : ControllerBase
         }
 
         // Adapt Z-API-specific DTO to generic model
-        var adapter = _adapterFactory.GetAdapter(webhook);
-        if (adapter == null)
-        {
-            _logger.LogWarning("No adapter found for Z-API webhook");
-            return BadRequest(new { success = false, message = "Invalid webhook format" });
-        }
-
-        var genericMessage = adapter.Adapt(webhook);
+        var genericMessage = _adapter.Adapt(webhook);
         if (genericMessage == null)
         {
             return Ok(new { success = true, message = "Message ignored" });

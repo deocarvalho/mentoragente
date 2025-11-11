@@ -71,10 +71,9 @@ public class Program
         builder.Services.AddHttpClient<IZApiService, ZApiService>()
             .AddPolicyHandler(RetryPolicyConfiguration.GetEvolutionAPIRetryPolicy()); // Reuse same retry policy
 
-        // Register WhatsApp adapters
-        builder.Services.AddScoped<IWhatsAppWebhookAdapter, EvolutionWebhookAdapter>();
-        builder.Services.AddScoped<IWhatsAppWebhookAdapter, ZApiWebhookAdapter>();
-        builder.Services.AddScoped<WhatsAppWebhookAdapterFactory>();
+        // Register WhatsApp adapters (injected directly by controllers)
+        builder.Services.AddScoped<EvolutionWebhookAdapter>();
+        builder.Services.AddScoped<ZApiWebhookAdapter>();
 
         // Register WhatsApp service factory
         builder.Services.AddScoped<IWhatsAppServiceFactory, WhatsAppServiceFactory>();
