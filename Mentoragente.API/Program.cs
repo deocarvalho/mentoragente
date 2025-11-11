@@ -96,7 +96,22 @@ public class Program
         app.UseSwagger();
         app.UseSwaggerUI();
 
+        // Health check endpoint
         app.MapHealthChecks("/health");
+        
+        // Root endpoint for Render health checks
+        app.MapGet("/", () => new { 
+            status = "ok", 
+            service = "Mentoragente API",
+            version = "1.0.0",
+            environment = app.Environment.EnvironmentName,
+            timestamp = DateTime.UtcNow,
+            endpoints = new {
+                health = "/health",
+                swagger = "/swagger",
+                api = "/api"
+            }
+        });
 
         // Disable HTTPS redirection for Render/cloud deployment
         // app.UseHttpsRedirection();
