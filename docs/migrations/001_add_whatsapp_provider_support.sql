@@ -39,6 +39,9 @@ CREATE INDEX IF NOT EXISTS idx_mentorships_whatsapp_provider ON mentorships(what
 -- Step 7: Create index on instance_code for faster lookups
 CREATE INDEX IF NOT EXISTS idx_mentorships_instance_code ON mentorships(instance_code);
 
--- Note: evolution_api_key and evolution_instance_name columns are kept for backward compatibility
--- They can be removed in a future migration after confirming all mentorships are migrated
+-- Step 8: Remove deprecated columns after migration
+-- These columns are no longer needed as API key is now global and instance_code replaces evolution_instance_name
+ALTER TABLE mentorships 
+    DROP COLUMN IF EXISTS evolution_api_key,
+    DROP COLUMN IF EXISTS evolution_instance_name;
 
