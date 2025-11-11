@@ -35,6 +35,12 @@ public class CreateMentorshipRequestValidator : AbstractValidator<CreateMentorsh
             .Must(BeValidProvider).WithMessage("WhatsApp Provider must be one of: EvolutionAPI, ZApi, OfficialWhatsApp")
             .When(x => !string.IsNullOrEmpty(x.WhatsAppProvider));
     }
+
+    private bool BeValidProvider(string? provider)
+    {
+        if (string.IsNullOrEmpty(provider)) return true;
+        return provider == "EvolutionAPI" || provider == "ZApi" || provider == "OfficialWhatsApp";
+    }
 }
 
 public class UpdateMentorshipRequestValidator : AbstractValidator<UpdateMentorshipRequestDto>

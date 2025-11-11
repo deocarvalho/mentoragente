@@ -34,7 +34,7 @@ public class MentorshipServiceTests
             .ReturnsAsync((User?)null);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test Mentorship", "asst_123", 30, null, "api_key", "instance_name"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test Mentorship", "asst_123", 30, null, null, "instance_code"))
             .Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"*Mentor with ID {mentorId} not found*");
     }
@@ -48,8 +48,7 @@ public class MentorshipServiceTests
         var name = "Test Mentorship";
         var assistantId = "asst_123";
         var durationDays = 30;
-        var evolutionApiKey = "test_api_key";
-        var evolutionInstanceName = "test_instance";
+        var instanceCode = "test_instance";
 
         _mockUserRepository.Setup(x => x.GetUserByIdAsync(mentorId))
             .ReturnsAsync(mentor);
@@ -58,15 +57,15 @@ public class MentorshipServiceTests
             .ReturnsAsync((Mentorship m) => m);
 
         // Act
-        var result = await _mentorshipService.CreateMentorshipAsync(mentorId, name, assistantId, durationDays, null, evolutionApiKey, evolutionInstanceName);
+        var result = await _mentorshipService.CreateMentorshipAsync(mentorId, name, assistantId, durationDays, null, WhatsAppProvider.ZApi, instanceCode);
 
         // Assert
         result.Should().NotBeNull();
         result.Name.Should().Be(name);
         result.AssistantId.Should().Be(assistantId);
         result.DurationDays.Should().Be(durationDays);
-        result.EvolutionApiKey.Should().Be(evolutionApiKey);
-        result.EvolutionInstanceName.Should().Be(evolutionInstanceName);
+        result.InstanceCode.Should().Be(instanceCode);
+        result.WhatsAppProvider.Should().Be(WhatsAppProvider.ZApi);
         result.Status.Should().Be(MentorshipStatus.Active);
         _mockMentorshipRepository.Verify(x => x.CreateMentorshipAsync(It.IsAny<Mentorship>()), Times.Once);
     }
@@ -236,7 +235,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, name, "asst_123", 30, null, "api_key", "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, name, "asst_123", 30, null, null, "instance"))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Name is required*");
     }
@@ -255,7 +254,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", assistantId, 30, null, "api_key", "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", assistantId, 30, null, null, "instance"))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Assistant ID is required*");
     }
@@ -273,7 +272,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", durationDays, null, "api_key", "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", durationDays, null, null, "instance"))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Duration in days must be greater than 0*");
     }
@@ -334,8 +333,11 @@ public class MentorshipServiceTests
             .WithMessage($"*Mentorship with ID {mentorshipId} not found*");
     }
 
-    [Fact]
-    public async Task CreateMentorshipAsync_ShouldThrowWhenEvolutionApiKeyIsInvalid()
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task CreateMentorshipAsync_ShouldThrowWhenInstanceCodeIsInvalid(string instanceCode)
     {
         // Arrange
         var mentorId = Guid.NewGuid();
@@ -345,25 +347,9 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", 30, null, "", "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", 30, null, null, instanceCode))
             .Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Evolution API Key is required*");
-    }
-
-    [Fact]
-    public async Task CreateMentorshipAsync_ShouldThrowWhenEvolutionInstanceNameIsInvalid()
-    {
-        // Arrange
-        var mentorId = Guid.NewGuid();
-        var mentor = new User { Id = mentorId };
-
-        _mockUserRepository.Setup(x => x.GetUserByIdAsync(mentorId))
-            .ReturnsAsync(mentor);
-
-        // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", 30, null, "api_key", ""))
-            .Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Evolution Instance Name is required*");
+            .WithMessage("*Instance code is required*");
     }
 }
 

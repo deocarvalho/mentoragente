@@ -90,14 +90,14 @@ public class EvolutionAPIService : IEvolutionAPIService
             
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Message sent successfully to {PhoneNumber} via instance {InstanceCode}", phoneNumber, instanceCode);
+                _logger.LogInformation("Message sent successfully to {PhoneNumber} via instance {InstanceCode}", phoneNumber, mentorship.InstanceCode);
                 return true;
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 _logger.LogError("Failed to send message to {PhoneNumber} via instance {InstanceCode}. Status: {StatusCode}, Error: {Error}", 
-                    phoneNumber, instanceCode, response.StatusCode, errorContent);
+                    phoneNumber, mentorship.InstanceCode, response.StatusCode, errorContent);
                 return false;
             }
         }

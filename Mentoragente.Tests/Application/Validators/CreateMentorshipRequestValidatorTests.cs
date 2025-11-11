@@ -25,8 +25,8 @@ public class CreateMentorshipRequestValidatorTests
             AssistantId = "asst_TEST123",
             DurationDays = 30,
             Description = "Test description",
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -46,8 +46,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -71,8 +71,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = name,
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -93,8 +93,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = new string('a', 201),
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -117,8 +117,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = assistantId,
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -139,8 +139,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = new string('a', 101),
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -163,8 +163,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = days,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -185,8 +185,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 366,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -208,8 +208,8 @@ public class CreateMentorshipRequestValidatorTests
             AssistantId = "asst_TEST123",
             DurationDays = 30,
             Description = new string('a', 1001),
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -223,7 +223,7 @@ public class CreateMentorshipRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_ShouldFail_WhenEvolutionApiKeyIsEmpty(string apiKey)
+    public void Validate_ShouldFail_WhenInstanceCodeIsEmpty(string instanceCode)
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -232,8 +232,7 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = apiKey,
-            EvolutionInstanceName = "test_instance"
+            InstanceCode = instanceCode
         };
 
         // Act
@@ -241,11 +240,11 @@ public class CreateMentorshipRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "EvolutionApiKey");
+        result.Errors.Should().Contain(e => e.PropertyName == "InstanceCode");
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenEvolutionApiKeyExceedsMaxLength()
+    public void Validate_ShouldFail_WhenInstanceCodeExceedsMaxLength()
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -254,8 +253,7 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = new string('a', 501),
-            EvolutionInstanceName = "test_instance"
+            InstanceCode = new string('a', 101)
         };
 
         // Act
@@ -263,13 +261,14 @@ public class CreateMentorshipRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "EvolutionApiKey");
+        result.Errors.Should().Contain(e => e.PropertyName == "InstanceCode");
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData(null)]
-    public void Validate_ShouldFail_WhenEvolutionInstanceNameIsEmpty(string instanceName)
+    [InlineData("EvolutionAPI")]
+    [InlineData("ZApi")]
+    [InlineData("OfficialWhatsApp")]
+    public void Validate_ShouldPass_WhenWhatsAppProviderIsValid(string provider)
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -278,20 +277,19 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = instanceName
+            WhatsAppProvider = provider,
+            InstanceCode = "test_instance"
         };
 
         // Act
         var result = _validator.Validate(request);
 
         // Assert
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "EvolutionInstanceName");
+        result.IsValid.Should().BeTrue();
     }
 
     [Fact]
-    public void Validate_ShouldFail_WhenEvolutionInstanceNameExceedsMaxLength()
+    public void Validate_ShouldFail_WhenWhatsAppProviderIsInvalid()
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -300,8 +298,8 @@ public class CreateMentorshipRequestValidatorTests
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = new string('a', 101)
+            WhatsAppProvider = "InvalidProvider",
+            InstanceCode = "test_instance"
         };
 
         // Act
@@ -309,7 +307,7 @@ public class CreateMentorshipRequestValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "EvolutionInstanceName");
+        result.Errors.Should().Contain(e => e.PropertyName == "WhatsAppProvider");
     }
 }
 
@@ -333,8 +331,8 @@ public class UpdateMentorshipRequestValidatorTests
             DurationDays = 60,
             Description = "Updated description",
             Status = "Active",
-            EvolutionApiKey = "updated_key",
-            EvolutionInstanceName = "updated_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "updated_instance"
         };
 
         // Act

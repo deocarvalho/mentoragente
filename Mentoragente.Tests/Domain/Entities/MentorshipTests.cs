@@ -21,8 +21,8 @@ public class MentorshipTests
         mentorship.DurationDays.Should().Be(0);
         mentorship.Description.Should().BeNull();
         mentorship.Status.Should().Be(MentorshipStatus.Active);
-        mentorship.EvolutionApiKey.Should().BeEmpty();
-        mentorship.EvolutionInstanceName.Should().BeEmpty();
+        mentorship.WhatsAppProvider.Should().Be(WhatsAppProvider.ZApi);
+        mentorship.InstanceCode.Should().BeEmpty();
         mentorship.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
         mentorship.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
     }
@@ -38,8 +38,8 @@ public class MentorshipTests
         var durationDays = 30;
         var description = "30-day program";
         var status = MentorshipStatus.Active;
-        var evolutionApiKey = "test_api_key";
-        var evolutionInstanceName = "test_instance";
+        var whatsAppProvider = WhatsAppProvider.ZApi;
+        var instanceCode = "test_instance";
 
         // Act
         var mentorship = new Mentorship
@@ -51,8 +51,8 @@ public class MentorshipTests
             DurationDays = durationDays,
             Description = description,
             Status = status,
-            EvolutionApiKey = evolutionApiKey,
-            EvolutionInstanceName = evolutionInstanceName
+            WhatsAppProvider = whatsAppProvider,
+            InstanceCode = instanceCode
         };
 
         // Assert
@@ -63,8 +63,8 @@ public class MentorshipTests
         mentorship.DurationDays.Should().Be(durationDays);
         mentorship.Description.Should().Be(description);
         mentorship.Status.Should().Be(status);
-        mentorship.EvolutionApiKey.Should().Be(evolutionApiKey);
-        mentorship.EvolutionInstanceName.Should().Be(evolutionInstanceName);
+        mentorship.WhatsAppProvider.Should().Be(whatsAppProvider);
+        mentorship.InstanceCode.Should().Be(instanceCode);
     }
 }
 

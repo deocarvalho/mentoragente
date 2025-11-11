@@ -17,7 +17,7 @@ public class MessageProcessorAdditionalTests
     private readonly Mock<IAccessValidationService> _mockAccessValidationService;
     private readonly Mock<IConversationRepository> _mockConversationRepository;
     private readonly Mock<IOpenAIAssistantService> _mockOpenAIAssistantService;
-    private readonly Mock<IEvolutionAPIService> _mockEvolutionAPIService;
+    private readonly Mock<IWhatsAppServiceFactory> _mockWhatsAppServiceFactory;
     private readonly Mock<ISessionUpdateService> _mockSessionUpdateService;
     private readonly Mock<ILogger<MessageProcessor>> _mockLogger;
     private readonly MessageProcessor _messageProcessor;
@@ -30,7 +30,7 @@ public class MessageProcessorAdditionalTests
         _mockAccessValidationService = new Mock<IAccessValidationService>();
         _mockConversationRepository = new Mock<IConversationRepository>();
         _mockOpenAIAssistantService = new Mock<IOpenAIAssistantService>();
-        _mockEvolutionAPIService = new Mock<IEvolutionAPIService>();
+        _mockWhatsAppServiceFactory = new Mock<IWhatsAppServiceFactory>();
         _mockSessionUpdateService = new Mock<ISessionUpdateService>();
         _mockLogger = new Mock<ILogger<MessageProcessor>>();
         
@@ -41,7 +41,7 @@ public class MessageProcessorAdditionalTests
             _mockAccessValidationService.Object,
             _mockConversationRepository.Object,
             _mockOpenAIAssistantService.Object,
-            _mockEvolutionAPIService.Object,
+            _mockWhatsAppServiceFactory.Object,
             _mockSessionUpdateService.Object,
             _mockLogger.Object);
     }

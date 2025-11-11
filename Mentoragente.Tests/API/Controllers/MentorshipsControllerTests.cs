@@ -67,8 +67,8 @@ public class MentorshipsControllerTests
             Name = "Test Mentorship",
             AssistantId = "asst_123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
         var validationResult = new FluentValidation.Results.ValidationResult();
         var mentorship = new Mentorship
@@ -78,8 +78,8 @@ public class MentorshipsControllerTests
             MentorId = request.MentorId,
             AssistantId = request.AssistantId,
             DurationDays = request.DurationDays,
-            EvolutionApiKey = request.EvolutionApiKey,
-            EvolutionInstanceName = request.EvolutionInstanceName
+            WhatsAppProvider = WhatsAppProvider.ZApi,
+            InstanceCode = request.InstanceCode
         };
 
         _mockCreateValidator.Setup(x => x.ValidateAsync(request, It.IsAny<CancellationToken>()))
@@ -87,7 +87,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.CreateMentorshipAsync(
             request.MentorId, request.Name, request.AssistantId, request.DurationDays, 
-            request.Description, request.EvolutionApiKey, request.EvolutionInstanceName))
+            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
             .ReturnsAsync(mentorship);
 
         // Act
@@ -195,8 +195,7 @@ public class MentorshipsControllerTests
             Name = "Test",
             AssistantId = "asst_123",
             DurationDays = 30,
-            EvolutionApiKey = "api_key",
-            EvolutionInstanceName = "instance"
+            InstanceCode = "instance"
         };
         var validationResult = new FluentValidation.Results.ValidationResult();
 
@@ -205,7 +204,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.CreateMentorshipAsync(
             request.MentorId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, request.EvolutionApiKey, request.EvolutionInstanceName))
+            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
             .ThrowsAsync(new InvalidOperationException("Mentor not found"));
 
         // Act & Assert
@@ -224,8 +223,7 @@ public class MentorshipsControllerTests
             Name = "",
             AssistantId = "asst_123",
             DurationDays = 30,
-            EvolutionApiKey = "api_key",
-            EvolutionInstanceName = "instance"
+            InstanceCode = "instance"
         };
         var validationResult = new FluentValidation.Results.ValidationResult();
 
@@ -234,7 +232,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.CreateMentorshipAsync(
             request.MentorId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, request.EvolutionApiKey, request.EvolutionInstanceName))
+            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
             .ThrowsAsync(new ArgumentException("Name is required"));
 
         // Act & Assert
@@ -257,7 +255,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.UpdateMentorshipAsync(
             mentorshipId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, null, request.EvolutionApiKey, request.EvolutionInstanceName))
+            request.Description, null, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
             .ReturnsAsync(mentorship);
 
         // Act
@@ -280,7 +278,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.UpdateMentorshipAsync(
             mentorshipId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, null, request.EvolutionApiKey, request.EvolutionInstanceName))
+            request.Description, null, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
             .ThrowsAsync(new InvalidOperationException("Mentorship not found"));
 
         // Act & Assert

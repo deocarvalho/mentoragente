@@ -37,8 +37,7 @@ public class EvolutionAPIServiceTests
         var mentorship = new Mentorship
         {
             Id = mentorshipId,
-            EvolutionApiKey = "test-api-key",
-            EvolutionInstanceName = "test-instance"
+            InstanceCode = "test-instance"
         };
         
         _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
@@ -91,8 +90,7 @@ public class EvolutionAPIServiceTests
         var mentorship = new Mentorship
         {
             Id = mentorshipId,
-            EvolutionApiKey = "", // Empty API key
-            EvolutionInstanceName = "test-instance"
+            InstanceCode = "" // Empty instance code
         };
         
         _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
@@ -104,36 +102,7 @@ public class EvolutionAPIServiceTests
         // Act & Assert
         await service.Invoking(s => s.SendMessageAsync(phoneNumber, message, mentorshipId))
             .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage($"*Evolution API Key not configured for mentorship {mentorshipId}*");
-    }
-
-    [Fact]
-    public async Task SendMessageAsync_ShouldThrowWhenInstanceNameNotConfigured()
-    {
-        // Arrange
-        var mentorshipId = Guid.NewGuid();
-        var phoneNumber = "5511999999999";
-        var message = "Test message";
-        
-        _mockConfiguration.Setup(c => c["EvolutionAPI:BaseUrl"]).Returns("https://evolution-api.example.com");
-        
-        var mentorship = new Mentorship
-        {
-            Id = mentorshipId,
-            EvolutionApiKey = "test-api-key",
-            EvolutionInstanceName = "" // Empty instance name
-        };
-        
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
-            .ReturnsAsync(mentorship);
-        
-        var httpClient = new HttpClient();
-        var service = new EvolutionAPIService(httpClient, _mockConfiguration.Object, _mockMentorshipRepository.Object, _mockLogger.Object);
-
-        // Act & Assert
-        await service.Invoking(s => s.SendMessageAsync(phoneNumber, message, mentorshipId))
-            .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage($"*Evolution Instance Name not configured for mentorship {mentorshipId}*");
+            .WithMessage($"*Instance code not configured for mentorship {mentorshipId}*");
     }
 }
 

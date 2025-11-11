@@ -36,8 +36,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
             AssistantId = "asst_TEST123",
             DurationDays = 30,
             Status = MentorshipStatus.Active,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = WhatsAppProvider.ZApi,
+            InstanceCode = "test_instance"
         };
 
         _helper.MockMentorshipService
@@ -159,8 +159,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
             AssistantId = "asst_TEST123",
             DurationDays = 30,
             Description = "Test description",
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            WhatsAppProvider = "ZApi",
+            InstanceCode = "test_instance"
         };
 
         var mentorshipId = Guid.NewGuid();
@@ -172,8 +172,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
             AssistantId = request.AssistantId,
             DurationDays = request.DurationDays,
             Description = request.Description,
-            EvolutionApiKey = request.EvolutionApiKey,
-            EvolutionInstanceName = request.EvolutionInstanceName,
+            WhatsAppProvider = WhatsAppProvider.ZApi,
+            InstanceCode = request.InstanceCode,
             Status = MentorshipStatus.Active
         };
 
@@ -184,8 +184,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.AssistantId,
                 request.DurationDays,
                 request.Description,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName))
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode))
             .ReturnsAsync(mentorship);
 
         // Act
@@ -205,8 +205,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.AssistantId,
                 request.DurationDays,
                 request.Description,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName),
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode),
             Times.Once);
     }
 
@@ -239,7 +239,7 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 It.IsAny<string>(),
                 It.IsAny<int>(),
                 It.IsAny<string?>(),
-                It.IsAny<string>(),
+                It.IsAny<WhatsAppProvider?>(),
                 It.IsAny<string>()),
             Times.Never);
     }
@@ -254,8 +254,7 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
             Name = "Test Mentorship",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            InstanceCode = "test_instance"
         };
 
         _helper.MockMentorshipService
@@ -265,8 +264,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.AssistantId,
                 request.DurationDays,
                 request.Description,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName))
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode))
             .ThrowsAsync(new InvalidOperationException("Mentor not found"));
 
         // Act
@@ -286,8 +285,7 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
             Name = "",
             AssistantId = "asst_TEST123",
             DurationDays = 30,
-            EvolutionApiKey = "test_api_key",
-            EvolutionInstanceName = "test_instance"
+            InstanceCode = "test_instance"
         };
 
         _helper.MockMentorshipService
@@ -297,8 +295,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.AssistantId,
                 request.DurationDays,
                 request.Description,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName))
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode))
             .ThrowsAsync(new ArgumentException("Name is required"));
 
         // Act
@@ -335,8 +333,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 null,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName))
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode))
             .ReturnsAsync(updatedMentorship);
 
         // Act
@@ -357,8 +355,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 null,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName),
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode),
             Times.Once);
     }
 
@@ -380,8 +378,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 null,
-                request.EvolutionApiKey,
-                request.EvolutionInstanceName))
+                It.IsAny<WhatsAppProvider?>(),
+                request.InstanceCode))
             .ThrowsAsync(new InvalidOperationException("Mentorship not found"));
 
         // Act
@@ -418,7 +416,7 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 It.IsAny<int?>(),
                 It.IsAny<string?>(),
                 It.IsAny<MentorshipStatus?>(),
-                It.IsAny<string?>(),
+                It.IsAny<WhatsAppProvider?>(),
                 It.IsAny<string?>()),
             Times.Never);
     }
