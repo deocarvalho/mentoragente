@@ -33,6 +33,7 @@ public static class EntityToDtoMappings
             Status = mentorship.Status.ToString(),
             WhatsAppProvider = mentorship.WhatsAppProvider.ToString(),
             InstanceCode = mentorship.InstanceCode,
+            InstanceToken = mentorship.InstanceToken,
             CreatedAt = mentorship.CreatedAt,
             UpdatedAt = mentorship.UpdatedAt
         };

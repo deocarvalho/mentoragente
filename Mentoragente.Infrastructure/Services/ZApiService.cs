@@ -15,7 +15,7 @@ public class ZApiService : IZApiService
     private readonly IMentorshipRepository _mentorshipRepository;
     private readonly ILogger<ZApiService> _logger;
     private readonly string _baseUrl;
-    private readonly string _token;
+    private readonly string _clientToken; // Global Client-Token for all instances
     private readonly JsonSerializerOptions _jsonOptions;
 
     public WhatsAppProvider Provider => WhatsAppProvider.ZApi;
@@ -31,16 +31,13 @@ public class ZApiService : IZApiService
         _mentorshipRepository = mentorshipRepository;
         _logger = logger;
         _baseUrl = _configuration["ZApi:BaseUrl"] ?? throw new InvalidOperationException("Z-API base URL not configured");
-        _token = _configuration["ZApi:Token"] ?? throw new InvalidOperationException("Z-API token not configured");
+        _clientToken = _configuration["ZApi:Client-Token"] ?? throw new InvalidOperationException("Z-API Client-Token not configured");
 
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
-
-        // Set default authorization header
-        _httpClient.DefaultRequestHeaders.Add("Client-Token", _token);
     }
 
     public async Task<bool> SendMessageAsync(string phoneNumber, string message, Guid mentorshipId)
@@ -65,6 +62,12 @@ public class ZApiService : IZApiService
                 throw new InvalidOperationException($"Instance code not configured for mentorship {mentorship.Id}");
             }
 
+            if (string.IsNullOrWhiteSpace(mentorship.InstanceToken))
+            {
+                _logger.LogError("Instance token not configured for mentorship {MentorshipId}", mentorship.Id);
+                throw new InvalidOperationException($"Instance token not configured for mentorship {mentorship.Id}");
+            }
+
             var requestBody = new
             {
                 phone = phoneNumber,
@@ -74,8 +77,17 @@ public class ZApiService : IZApiService
             var json = JsonSerializer.Serialize(requestBody, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            // Z-API endpoint: POST /v1/instances/{instance}/send-text
-            var response = await _httpClient.PostAsync($"{_baseUrl}/v1/instances/{mentorship.InstanceCode}/send-text", content);
+            // Z-API endpoint format: /instances/{instanceId}/token/{instanceToken}/send-text
+            // Client-Token goes in the header (global for all instances)
+            var endpoint = $"{_baseUrl}/instances/{mentorship.InstanceCode}/token/{mentorship.InstanceToken}/send-text";
+            
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = content
+            };
+            requestMessage.Headers.Add("Client-Token", _clientToken);
+            
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {

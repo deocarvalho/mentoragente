@@ -15,13 +15,13 @@ public class EvolutionWebhookController : ControllerBase
 {
     private readonly IMessageProcessor _messageProcessor;
     private readonly IWhatsAppServiceFactory _whatsAppServiceFactory;
-    private readonly EvolutionWebhookAdapter _adapter;
+    private readonly IEvolutionWebhookAdapter _adapter;
     private readonly ILogger<EvolutionWebhookController> _logger;
 
     public EvolutionWebhookController(
         IMessageProcessor messageProcessor,
         IWhatsAppServiceFactory whatsAppServiceFactory,
-        EvolutionWebhookAdapter adapter,
+        IEvolutionWebhookAdapter adapter,
         ILogger<EvolutionWebhookController> logger)
     {
         _messageProcessor = messageProcessor;

@@ -87,7 +87,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.CreateMentorshipAsync(
             request.MentorId, request.Name, request.AssistantId, request.DurationDays, 
-            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
+            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode, request.InstanceToken))
             .ReturnsAsync(mentorship);
 
         // Act
@@ -204,7 +204,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.CreateMentorshipAsync(
             request.MentorId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
+            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode, request.InstanceToken))
             .ThrowsAsync(new InvalidOperationException("Mentor not found"));
 
         // Act & Assert
@@ -232,7 +232,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.CreateMentorshipAsync(
             request.MentorId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
+            request.Description, It.IsAny<WhatsAppProvider?>(), request.InstanceCode, request.InstanceToken))
             .ThrowsAsync(new ArgumentException("Name is required"));
 
         // Act & Assert
@@ -255,7 +255,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.UpdateMentorshipAsync(
             mentorshipId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, null, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
+            request.Description, null, It.IsAny<WhatsAppProvider?>(), request.InstanceCode, request.InstanceToken))
             .ReturnsAsync(mentorship);
 
         // Act
@@ -278,7 +278,7 @@ public class MentorshipsControllerTests
 
         _mockMentorshipService.Setup(x => x.UpdateMentorshipAsync(
             mentorshipId, request.Name, request.AssistantId, request.DurationDays,
-            request.Description, null, It.IsAny<WhatsAppProvider?>(), request.InstanceCode))
+            request.Description, null, It.IsAny<WhatsAppProvider?>(), request.InstanceCode, request.InstanceToken))
             .ThrowsAsync(new InvalidOperationException("Mentorship not found"));
 
         // Act & Assert

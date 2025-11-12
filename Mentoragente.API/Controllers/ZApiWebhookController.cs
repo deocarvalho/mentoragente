@@ -15,13 +15,13 @@ public class ZApiWebhookController : ControllerBase
 {
     private readonly IMessageProcessor _messageProcessor;
     private readonly IWhatsAppServiceFactory _whatsAppServiceFactory;
-    private readonly ZApiWebhookAdapter _adapter;
+    private readonly IZApiWebhookAdapter _adapter;
     private readonly ILogger<ZApiWebhookController> _logger;
 
     public ZApiWebhookController(
         IMessageProcessor messageProcessor,
         IWhatsAppServiceFactory whatsAppServiceFactory,
-        ZApiWebhookAdapter adapter,
+        IZApiWebhookAdapter adapter,
         ILogger<ZApiWebhookController> logger)
     {
         _messageProcessor = messageProcessor;

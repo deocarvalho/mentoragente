@@ -35,6 +35,9 @@ public class Mentorship : BaseModel
     [Column("instance_code")]
     public string InstanceCode { get; set; } = string.Empty;
     
+    [Column("instance_token")]
+    public string? InstanceToken { get; set; }
+    
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     

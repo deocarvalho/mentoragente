@@ -3,7 +3,7 @@ using Mentoragente.Domain.Models;
 
 namespace Mentoragente.Application.Adapters;
 
-public class ZApiWebhookAdapter : IWhatsAppWebhookAdapter
+public class ZApiWebhookAdapter : IZApiWebhookAdapter
 {
     public WhatsAppProvider Provider => WhatsAppProvider.ZApi;
 

@@ -13,6 +13,7 @@ public class MentorshipResponseDto
     public string Status { get; set; } = string.Empty;
     public string WhatsAppProvider { get; set; } = string.Empty;
     public string InstanceCode { get; set; } = string.Empty;
+    public string? InstanceToken { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -26,6 +27,7 @@ public class CreateMentorshipRequestDto
     public string? Description { get; set; }
     public string? WhatsAppProvider { get; set; }
     public string InstanceCode { get; set; } = string.Empty;
+    public string? InstanceToken { get; set; }
 }
 
 public class UpdateMentorshipRequestDto
@@ -37,6 +39,7 @@ public class UpdateMentorshipRequestDto
     public string? Status { get; set; }
     public string? WhatsAppProvider { get; set; }
     public string? InstanceCode { get; set; }
+    public string? InstanceToken { get; set; }
 }
 
 public class MentorshipListResponseDto

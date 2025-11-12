@@ -20,7 +20,8 @@ public interface IMentorshipService
         int durationDays,
         string? description = null,
         WhatsAppProvider? whatsAppProvider = null,
-        string? instanceCode = null);
+        string? instanceCode = null,
+        string? instanceToken = null);
     Task<Mentorship> UpdateMentorshipAsync(
         Guid id,
         string? name = null,
@@ -29,7 +30,8 @@ public interface IMentorshipService
         string? description = null,
         MentorshipStatus? status = null,
         WhatsAppProvider? whatsAppProvider = null,
-        string? instanceCode = null);
+        string? instanceCode = null,
+        string? instanceToken = null);
     Task<bool> DeleteMentorshipAsync(Guid id);
 }
 
@@ -93,7 +95,8 @@ public class MentorshipService : IMentorshipService
         int durationDays,
         string? description = null,
         WhatsAppProvider? whatsAppProvider = null,
-        string? instanceCode = null)
+        string? instanceCode = null,
+        string? instanceToken = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name is required", nameof(name));
@@ -124,6 +127,7 @@ public class MentorshipService : IMentorshipService
             Description = description,
             WhatsAppProvider = whatsAppProvider ?? WhatsAppProvider.ZApi,
             InstanceCode = instanceCode,
+            InstanceToken = instanceToken,
             Status = MentorshipStatus.Active
         };
 
@@ -139,7 +143,8 @@ public class MentorshipService : IMentorshipService
         string? description = null,
         MentorshipStatus? status = null,
         WhatsAppProvider? whatsAppProvider = null,
-        string? instanceCode = null)
+        string? instanceCode = null,
+        string? instanceToken = null)
     {
         var mentorship = await _mentorshipRepository.GetMentorshipByIdAsync(id);
         if (mentorship == null)
@@ -168,6 +173,9 @@ public class MentorshipService : IMentorshipService
 
         if (!string.IsNullOrWhiteSpace(instanceCode))
             mentorship.InstanceCode = instanceCode;
+
+        if (instanceToken != null)
+            mentorship.InstanceToken = instanceToken;
 
         _logger.LogInformation("Updating mentorship {MentorshipId}", id);
         return await _mentorshipRepository.UpdateMentorshipAsync(mentorship);

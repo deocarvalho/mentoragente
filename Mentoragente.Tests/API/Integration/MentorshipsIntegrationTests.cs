@@ -185,7 +185,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode))
+                request.InstanceCode,
+                request.InstanceToken))
             .ReturnsAsync(mentorship);
 
         // Act
@@ -206,7 +207,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode),
+                request.InstanceCode,
+                request.InstanceToken),
             Times.Once);
     }
 
@@ -240,7 +242,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 It.IsAny<int>(),
                 It.IsAny<string?>(),
                 It.IsAny<WhatsAppProvider?>(),
-                It.IsAny<string>()),
+                It.IsAny<string>(),
+                It.IsAny<string?>()),
             Times.Never);
     }
 
@@ -265,7 +268,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode))
+                request.InstanceCode,
+                request.InstanceToken))
             .ThrowsAsync(new InvalidOperationException("Mentor not found"));
 
         // Act
@@ -296,7 +300,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.DurationDays,
                 request.Description,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode))
+                request.InstanceCode,
+                request.InstanceToken))
             .ThrowsAsync(new ArgumentException("Name is required"));
 
         // Act
@@ -334,7 +339,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.Description,
                 null,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode))
+                request.InstanceCode,
+                request.InstanceToken))
             .ReturnsAsync(updatedMentorship);
 
         // Act
@@ -356,7 +362,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.Description,
                 null,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode),
+                request.InstanceCode,
+                request.InstanceToken),
             Times.Once);
     }
 
@@ -379,7 +386,8 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 request.Description,
                 null,
                 It.IsAny<WhatsAppProvider?>(),
-                request.InstanceCode))
+                request.InstanceCode,
+                request.InstanceToken))
             .ThrowsAsync(new InvalidOperationException("Mentorship not found"));
 
         // Act
@@ -417,6 +425,7 @@ public class MentorshipsIntegrationTests : IClassFixture<WebApplicationFactory<P
                 It.IsAny<string?>(),
                 It.IsAny<MentorshipStatus?>(),
                 It.IsAny<WhatsAppProvider?>(),
+                It.IsAny<string?>(),
                 It.IsAny<string?>()),
             Times.Never);
     }

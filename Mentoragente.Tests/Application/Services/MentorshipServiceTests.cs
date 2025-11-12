@@ -34,7 +34,7 @@ public class MentorshipServiceTests
             .ReturnsAsync((User?)null);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test Mentorship", "asst_123", 30, null, null, "instance_code"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test Mentorship", "asst_123", 30, null, null, "instance_code", null))
             .Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"*Mentor with ID {mentorId} not found*");
     }
@@ -57,7 +57,7 @@ public class MentorshipServiceTests
             .ReturnsAsync((Mentorship m) => m);
 
         // Act
-        var result = await _mentorshipService.CreateMentorshipAsync(mentorId, name, assistantId, durationDays, null, WhatsAppProvider.ZApi, instanceCode);
+        var result = await _mentorshipService.CreateMentorshipAsync(mentorId, name, assistantId, durationDays, null, WhatsAppProvider.ZApi, instanceCode, null);
 
         // Assert
         result.Should().NotBeNull();
@@ -235,7 +235,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, name, "asst_123", 30, null, null, "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, name, "asst_123", 30, null, null, "instance", null))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Name is required*");
     }
@@ -254,7 +254,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", assistantId, 30, null, null, "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", assistantId, 30, null, null, "instance", null))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Assistant ID is required*");
     }
@@ -272,7 +272,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", durationDays, null, null, "instance"))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", durationDays, null, null, "instance", null))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Duration in days must be greater than 0*");
     }
@@ -347,7 +347,7 @@ public class MentorshipServiceTests
             .ReturnsAsync(mentor);
 
         // Act & Assert
-        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", 30, null, null, instanceCode))
+        await _mentorshipService.Invoking(s => s.CreateMentorshipAsync(mentorId, "Test", "asst_123", 30, null, null, instanceCode, null))
             .Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Instance code is required*");
     }

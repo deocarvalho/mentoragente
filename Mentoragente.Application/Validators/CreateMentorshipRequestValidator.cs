@@ -31,6 +31,10 @@ public class CreateMentorshipRequestValidator : AbstractValidator<CreateMentorsh
             .NotEmpty().WithMessage("Instance code is required")
             .MaximumLength(100).WithMessage("Instance code cannot exceed 100 characters");
 
+        RuleFor(x => x.InstanceToken)
+            .MaximumLength(500).WithMessage("Instance token cannot exceed 500 characters")
+            .When(x => !string.IsNullOrEmpty(x.InstanceToken));
+
         RuleFor(x => x.WhatsAppProvider)
             .Must(BeValidProvider).WithMessage("WhatsApp Provider must be one of: EvolutionAPI, ZApi, OfficialWhatsApp")
             .When(x => !string.IsNullOrEmpty(x.WhatsAppProvider));
@@ -72,6 +76,10 @@ public class UpdateMentorshipRequestValidator : AbstractValidator<UpdateMentorsh
         RuleFor(x => x.InstanceCode)
             .MaximumLength(100).WithMessage("Instance code cannot exceed 100 characters")
             .When(x => !string.IsNullOrEmpty(x.InstanceCode));
+
+        RuleFor(x => x.InstanceToken)
+            .MaximumLength(500).WithMessage("Instance token cannot exceed 500 characters")
+            .When(x => !string.IsNullOrEmpty(x.InstanceToken));
 
         RuleFor(x => x.WhatsAppProvider)
             .Must(BeValidProvider).WithMessage("WhatsApp Provider must be one of: EvolutionAPI, ZApi, OfficialWhatsApp")

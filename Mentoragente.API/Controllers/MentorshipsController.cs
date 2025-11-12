@@ -99,7 +99,8 @@ public class MentorshipsController : ControllerBase
             request.DurationDays, 
             request.Description,
             whatsAppProvider,
-            request.InstanceCode);
+            request.InstanceCode,
+            request.InstanceToken);
 
         return CreatedAtAction(nameof(GetMentorshipById), new { id = mentorship.Id }, mentorship.ToDto());
     }
@@ -123,7 +124,8 @@ public class MentorshipsController : ControllerBase
             request.Description,
             EntityToDtoMappings.ParseMentorshipStatus(request.Status),
             whatsAppProvider,
-            request.InstanceCode);
+            request.InstanceCode,
+            request.InstanceToken);
 
         return Ok(mentorship.ToDto());
     }
