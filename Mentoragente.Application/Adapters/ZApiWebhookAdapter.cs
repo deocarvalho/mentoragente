@@ -41,16 +41,10 @@ public class ZApiWebhookAdapter : IZApiWebhookAdapter
             return null;
         }
 
-        // Only handle text messages for now
-        if (dto.Type != "text")
-        {
-            _logger.LogDebug("Ignoring non-text message. Type={Type}", dto.Type);
-            return null;
-        }
-
+        // Check if message has text content (Z-API uses "ReceivedCallback" type for received text messages)
         if (dto.Text?.Message == null || string.IsNullOrEmpty(dto.Text.Message))
         {
-            _logger.LogWarning("Ignoring message with empty text. HasText={HasText}", dto.Text != null);
+            _logger.LogDebug("Ignoring message without text content. Type={Type}, HasText={HasText}", dto.Type, dto.Text != null);
             return null;
         }
 
