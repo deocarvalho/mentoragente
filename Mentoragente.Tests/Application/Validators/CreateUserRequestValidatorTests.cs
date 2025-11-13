@@ -53,7 +53,7 @@ public class CreateUserRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_ShouldFail_WhenPhoneNumberIsEmpty(string phoneNumber)
+    public void Validate_ShouldFail_WhenPhoneNumberIsEmpty(string? phoneNumber)
     {
         // Arrange
         var request = new CreateUserRequestDto
@@ -96,7 +96,7 @@ public class CreateUserRequestValidatorTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("a")]
-    public void Validate_ShouldFail_WhenNameIsInvalid(string name)
+    public void Validate_ShouldFail_WhenNameIsInvalid(string? name)
     {
         // Arrange
         var request = new CreateUserRequestDto

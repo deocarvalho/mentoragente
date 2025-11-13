@@ -63,7 +63,7 @@ public class UserServiceTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task GetUserByPhoneAsync_ShouldReturnNullWhenPhoneNumberIsEmpty(string phoneNumber)
+    public async Task GetUserByPhoneAsync_ShouldReturnNullWhenPhoneNumberIsEmpty(string? phoneNumber)
     {
         // Act
         var result = await _userService.GetUserByPhoneAsync(phoneNumber);
@@ -127,7 +127,7 @@ public class UserServiceTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task CreateUserAsync_ShouldThrowWhenPhoneNumberIsEmpty(string phoneNumber)
+    public async Task CreateUserAsync_ShouldThrowWhenPhoneNumberIsEmpty(string? phoneNumber)
     {
         // Act & Assert
         await _userService.Invoking(s => s.CreateUserAsync(phoneNumber, "Test", null))
@@ -139,7 +139,7 @@ public class UserServiceTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task CreateUserAsync_ShouldThrowWhenNameIsEmpty(string name)
+    public async Task CreateUserAsync_ShouldThrowWhenNameIsEmpty(string? name)
     {
         // Act & Assert
         await _userService.Invoking(s => s.CreateUserAsync("5511999999999", name, null))

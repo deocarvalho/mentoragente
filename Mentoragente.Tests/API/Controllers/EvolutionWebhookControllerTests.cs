@@ -42,14 +42,14 @@ public class EvolutionWebhookControllerTests
         var webhook = new EvolutionWebhookDto
         {
             Event = "messages.upsert",
-            Data = new WebhookData
+            Data = new EvolutionWebhookData
             {
-                Key = new WebhookKey
+                Key = new EvolutionWebhookKey
                 {
                     RemoteJid = "5511999999999@s.whatsapp.net",
                     FromMe = false
                 },
-                Message = new WebhookMessage { Conversation = "Hello" }
+                Message = new EvolutionWebhookMessage { Conversation = "Hello" }
             }
         };
 
@@ -70,14 +70,14 @@ public class EvolutionWebhookControllerTests
         var webhook = new EvolutionWebhookDto
         {
             Event = "messages.upsert",
-            Data = new WebhookData
+            Data = new EvolutionWebhookData
             {
-                Key = new WebhookKey
+                Key = new EvolutionWebhookKey
                 {
                     RemoteJid = "5511999999999@s.whatsapp.net",
                     FromMe = false
                 },
-                Message = new WebhookMessage { Conversation = "Hello" }
+                Message = new EvolutionWebhookMessage { Conversation = "Hello" }
             }
         };
 
@@ -100,14 +100,14 @@ public class EvolutionWebhookControllerTests
         var webhook = new EvolutionWebhookDto
         {
             Event = "messages.upsert",
-            Data = new WebhookData
+            Data = new EvolutionWebhookData
             {
-                Key = new WebhookKey
+                Key = new EvolutionWebhookKey
                 {
                     RemoteJid = "5511999999999@s.whatsapp.net",
                     FromMe = false
                 },
-                Message = new WebhookMessage { Conversation = "Hello" }
+                Message = new EvolutionWebhookMessage { Conversation = "Hello" }
             }
         };
 
@@ -169,14 +169,14 @@ public class EvolutionWebhookControllerTests
         var webhook = new EvolutionWebhookDto
         {
             Event = "messages.upsert",
-            Data = new WebhookData
+            Data = new EvolutionWebhookData
             {
-                Key = new WebhookKey
+                Key = new EvolutionWebhookKey
                 {
                     RemoteJid = "5511999999999@s.whatsapp.net",
                     FromMe = false
                 },
-                Message = new WebhookMessage { Conversation = "Hello" }
+                Message = new EvolutionWebhookMessage { Conversation = "Hello" }
             }
         };
 

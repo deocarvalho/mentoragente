@@ -3,6 +3,7 @@ using Mentoragente.Application.Adapters;
 using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Models;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Mentoragente.API.Controllers;
@@ -18,6 +19,10 @@ public class ZApiWebhookController : ControllerBase
     private readonly IWhatsAppServiceFactory _whatsAppServiceFactory;
     private readonly IZApiWebhookAdapter _adapter;
     private readonly ILogger<ZApiWebhookController> _logger;
+    
+    // In-memory cache for deduplication (MessageId -> timestamp)
+    // Messages older than 5 minutes are automatically removed
+    private static readonly ConcurrentDictionary<string, DateTime> _processedMessageIds = new();
 
     public ZApiWebhookController(
         IMessageProcessor messageProcessor,
@@ -56,6 +61,20 @@ public class ZApiWebhookController : ControllerBase
             return BadRequest(new { success = false, message = "MentorshipId query parameter is required" });
         }
 
+        // Deduplication: Check if we've already processed this message
+        if (!string.IsNullOrEmpty(webhook.MessageId))
+        {
+            CleanupOldMessageIds();
+            
+            if (_processedMessageIds.ContainsKey(webhook.MessageId))
+            {
+                _logger.LogWarning("Duplicate webhook message detected and ignored. MessageId: {MessageId}", webhook.MessageId);
+                return Ok(new { success = true, message = "Duplicate message ignored" });
+            }
+            
+            _processedMessageIds.TryAdd(webhook.MessageId, DateTime.UtcNow);
+        }
+
         // Adapt Z-API-specific DTO to generic model
         var genericMessage = _adapter.Adapt(webhook);
         if (genericMessage == null)
@@ -74,20 +93,49 @@ public class ZApiWebhookController : ControllerBase
             genericMessage.MessageText, 
             mentorshipId);
 
-        // Get the correct service based on mentorship configuration
-        var whatsAppService = _whatsAppServiceFactory.GetServiceForMentorship(result.Mentorship);
-        var sent = await whatsAppService.SendMessageAsync(
-            genericMessage.PhoneNumber, 
-            result.Response, 
-            result.Mentorship);
-
-        if (!sent)
+        // Send response in parallel (fire-and-forget) to avoid blocking webhook response
+        // This improves perceived latency - webhook returns immediately while message is sent in background
+        _ = Task.Run(async () =>
         {
-            _logger.LogError("Failed to send response to {PhoneNumber}", genericMessage.PhoneNumber);
-            return BadRequest(new { success = false, message = "Failed to send response" });
-        }
+            try
+            {
+                var whatsAppService = _whatsAppServiceFactory.GetServiceForMentorship(result.Mentorship);
+                var sent = await whatsAppService.SendMessageAsync(
+                    genericMessage.PhoneNumber, 
+                    result.Response, 
+                    result.Mentorship);
 
+                if (!sent)
+                {
+                    _logger.LogError("Failed to send response to {PhoneNumber} in background", genericMessage.PhoneNumber);
+                }
+                else
+                {
+                    _logger.LogDebug("Response sent successfully to {PhoneNumber} in background", genericMessage.PhoneNumber);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending response to {PhoneNumber} in background", genericMessage.PhoneNumber);
+            }
+        });
+
+        // Return immediately - message sending happens in background
         return Ok(new { success = true, message = "Message processed successfully" });
+    }
+
+    private static void CleanupOldMessageIds()
+    {
+        var cutoff = DateTime.UtcNow.AddMinutes(-5);
+        var keysToRemove = _processedMessageIds
+            .Where(kvp => kvp.Value < cutoff)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in keysToRemove)
+        {
+            _processedMessageIds.TryRemove(key, out _);
+        }
     }
 }
 

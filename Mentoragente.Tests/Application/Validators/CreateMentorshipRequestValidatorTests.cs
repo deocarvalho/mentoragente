@@ -108,7 +108,7 @@ public class CreateMentorshipRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_ShouldFail_WhenAssistantIdIsEmpty(string assistantId)
+    public void Validate_ShouldFail_WhenAssistantIdIsEmpty(string? assistantId)
     {
         // Arrange
         var request = new CreateMentorshipRequestDto
@@ -223,7 +223,7 @@ public class CreateMentorshipRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Validate_ShouldFail_WhenInstanceCodeIsEmpty(string instanceCode)
+    public void Validate_ShouldFail_WhenInstanceCodeIsEmpty(string? instanceCode)
     {
         // Arrange
         var request = new CreateMentorshipRequestDto

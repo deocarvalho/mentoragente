@@ -43,6 +43,9 @@ public class Program
         });
         builder.Services.AddHealthChecks();
 
+        // Add memory cache for mentorship caching
+        builder.Services.AddMemoryCache();
+
         // FluentValidation - using DependencyInjectionExtensions (FluentValidation.AspNetCore is deprecated)
         builder.Services.AddValidatorsFromAssemblyContaining<Application.Validators.CreateUserRequestValidator>();
 
@@ -60,6 +63,7 @@ public class Program
         builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<IMentorshipService, MentorshipService>();
         builder.Services.AddScoped<IAgentSessionService, AgentSessionService>();
+        builder.Services.AddScoped<IMentorshipCacheService, MentorshipCacheService>();
 
         // Register Infrastructure Layer services with retry policies
         builder.Services.AddHttpClient<IOpenAIAssistantService, OpenAIAssistantService>()

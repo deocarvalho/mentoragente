@@ -38,7 +38,7 @@ public class OpenAIAssistantService : IOpenAIAssistantService
         _httpClient.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v2");
     }
 
-    private async Task<JsonNode> PostJsonAsync(string endpoint, object payload)
+    private async Task<JsonNode> PostJsonAsync(string endpoint, object payload, bool throwOnError = true)
     {
         // Remove leading slash if present - HttpClient will combine with BaseAddress
         // If BaseAddress is "https://api.openai.com/v1" and endpoint is "threads",
@@ -65,7 +65,31 @@ public class OpenAIAssistantService : IOpenAIAssistantService
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("OpenAI API error: {StatusCode} - {Response}", response.StatusCode, json);
-            response.EnsureSuccessStatusCode();
+            
+            if (throwOnError)
+            {
+                // Check if error is about active run
+                try
+                {
+                    var errorJson = JsonNode.Parse(json);
+                    var errorMessage = errorJson?["error"]?["message"]?.ToString() ?? "";
+                    if (errorMessage.Contains("while a run") || errorMessage.Contains("run is active"))
+                    {
+                        throw new InvalidOperationException("RUN_ACTIVE");
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Re-throw the RUN_ACTIVE exception
+                    throw;
+                }
+                catch
+                {
+                    // If JSON parsing fails, continue with normal error handling
+                }
+                
+                response.EnsureSuccessStatusCode();
+            }
         }
         
         return JsonNode.Parse(json)!;
@@ -91,6 +115,9 @@ public class OpenAIAssistantService : IOpenAIAssistantService
     {
         try
         {
+            // Wait for any active runs to complete before adding message
+            await WaitForActiveRunsToCompleteAsync(threadId);
+            
             await PostJsonAsync($"threads/{threadId}/messages", new
             {
                 role = "user",
@@ -98,10 +125,91 @@ public class OpenAIAssistantService : IOpenAIAssistantService
             });
             _logger.LogDebug("Added user message to thread {ThreadId}", threadId);
         }
+        catch (InvalidOperationException ex) when (ex.Message == "RUN_ACTIVE")
+        {
+            // If we still get the error (race condition), wait and retry once
+            _logger.LogWarning("Run was active when adding message, waiting and retrying for thread {ThreadId}", threadId);
+            await WaitForActiveRunsToCompleteAsync(threadId);
+            
+            await PostJsonAsync($"threads/{threadId}/messages", new
+            {
+                role = "user",
+                content = userMessage
+            });
+            _logger.LogDebug("Added user message to thread {ThreadId} after waiting", threadId);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding user message to thread {ThreadId}", threadId);
             throw;
+        }
+    }
+
+    private async Task WaitForActiveRunsToCompleteAsync(string threadId)
+    {
+        const int maxWaitTime = 60; // Maximum 60 seconds
+        const int pollInterval = 1000; // Check every second
+        var elapsed = 0;
+
+        while (elapsed < maxWaitTime)
+        {
+            var activeRun = await GetActiveRunAsync(threadId);
+            if (activeRun == null)
+            {
+                return; // No active run
+            }
+
+            var runId = activeRun["id"]!.ToString();
+            var status = activeRun["status"]!.ToString();
+            
+            _logger.LogDebug("Waiting for run {RunId} to complete. Status: {Status}", runId, status);
+
+            if (status == "completed" || status == "failed" || status == "cancelled" || status == "expired")
+            {
+                _logger.LogDebug("Run {RunId} completed with status {Status}", runId, status);
+                return;
+            }
+
+            await Task.Delay(pollInterval);
+            elapsed += pollInterval / 1000;
+        }
+
+        _logger.LogWarning("Timeout waiting for active runs to complete for thread {ThreadId}", threadId);
+    }
+
+    private async Task<JsonNode?> GetActiveRunAsync(string threadId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"threads/{threadId}/runs?limit=1");
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+            var runs = json["data"]?.AsArray();
+            
+            if (runs == null || runs.Count == 0)
+            {
+                return null;
+            }
+
+            var latestRun = runs[0]!;
+            var status = latestRun["status"]!.ToString();
+            
+            // Check if run is in a state that blocks adding messages
+            if (status == "queued" || status == "in_progress" || status == "requires_action")
+            {
+                return latestRun;
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking for active runs in thread {ThreadId}", threadId);
+            return null;
         }
     }
 

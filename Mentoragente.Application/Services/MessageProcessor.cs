@@ -19,7 +19,7 @@ public class MessageProcessingResult
 public class MessageProcessor : IMessageProcessor
 {
     private readonly IUserOrchestrationService _userOrchestrationService;
-    private readonly IMentorshipRepository _mentorshipRepository;
+    private readonly IMentorshipCacheService _mentorshipCacheService;
     private readonly IAgentSessionOrchestrationService _sessionOrchestrationService;
     private readonly IAccessValidationService _accessValidationService;
     private readonly IConversationRepository _conversationRepository;
@@ -30,7 +30,7 @@ public class MessageProcessor : IMessageProcessor
 
     public MessageProcessor(
         IUserOrchestrationService userOrchestrationService,
-        IMentorshipRepository mentorshipRepository,
+        IMentorshipCacheService mentorshipCacheService,
         IAgentSessionOrchestrationService sessionOrchestrationService,
         IAccessValidationService accessValidationService,
         IConversationRepository conversationRepository,
@@ -40,7 +40,7 @@ public class MessageProcessor : IMessageProcessor
         ILogger<MessageProcessor> logger)
     {
         _userOrchestrationService = userOrchestrationService;
-        _mentorshipRepository = mentorshipRepository;
+        _mentorshipCacheService = mentorshipCacheService;
         _sessionOrchestrationService = sessionOrchestrationService;
         _accessValidationService = accessValidationService;
         _conversationRepository = conversationRepository;
@@ -55,7 +55,12 @@ public class MessageProcessor : IMessageProcessor
         if (string.IsNullOrWhiteSpace(messageText))
         {
             _logger.LogWarning("Received empty message from {PhoneNumber}", phoneNumber);
-            var mentorship = await GetMentorshipOrThrowAsync(mentorshipId);
+            var mentorship = await _mentorshipCacheService.GetMentorshipAsync(mentorshipId);
+            if (mentorship == null)
+            {
+                _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
+                throw new InvalidOperationException($"Mentorship {mentorshipId} not found");
+            }
             return new MessageProcessingResult
             {
                 Response = "Sorry, I couldn't understand your message. Please send a message with text.",
@@ -96,7 +101,12 @@ public class MessageProcessor : IMessageProcessor
         }
         catch (InvalidOperationException ex) when (ex.Message == "Access expired")
         {
-            var mentorship = await GetMentorshipOrThrowAsync(mentorshipId);
+            var mentorship = await _mentorshipCacheService.GetMentorshipAsync(mentorshipId);
+            if (mentorship == null)
+            {
+                _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
+                throw new InvalidOperationException($"Mentorship {mentorshipId} not found");
+            }
             return new MessageProcessingResult
             {
                 Response = "Your access period to this mentorship has ended. Please contact to renew.",
@@ -112,8 +122,15 @@ public class MessageProcessor : IMessageProcessor
 
     private async Task<ProcessingContext> LoadProcessingContextAsync(string phoneNumber, Guid mentorshipId)
     {
-        var user = await _userOrchestrationService.GetOrCreateUserAsync(phoneNumber);
-        var mentorship = await GetMentorshipOrThrowAsync(mentorshipId);
+        // Parallelize user and mentorship loading for better performance
+        var userTask = _userOrchestrationService.GetOrCreateUserAsync(phoneNumber);
+        var mentorshipTask = GetMentorshipOrThrowAsync(mentorshipId);
+        
+        await Task.WhenAll(userTask, mentorshipTask);
+        
+        var user = await userTask;
+        var mentorship = await mentorshipTask;
+        
         var sessionContext = await _sessionOrchestrationService.GetOrCreateSessionContextAsync(
             user.Id, mentorshipId, mentorship.DurationDays);
 
@@ -128,7 +145,7 @@ public class MessageProcessor : IMessageProcessor
 
     private async Task<Mentorship> GetMentorshipOrThrowAsync(Guid mentorshipId)
     {
-        var mentorship = await _mentorshipRepository.GetMentorshipByIdAsync(mentorshipId);
+        var mentorship = await _mentorshipCacheService.GetMentorshipAsync(mentorshipId);
         if (mentorship == null)
         {
             _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
@@ -176,10 +193,12 @@ public class MessageProcessor : IMessageProcessor
 
             await _sessionOrchestrationService.EnsureThreadExistsAsync(context.Session);
 
-            var welcomePrompt = BuildWelcomePrompt(displayName, context.Mentorship);
-            var welcomeMessage = await ProcessWithAIAsync(context, welcomePrompt, context.Mentorship.AssistantId);
+            var startPrompt = $"Ol�! Me chamo {displayName} e estou come�ando agora em {context.Mentorship.Name}! " + 
+                "Me d� as boas vindas e explique resumidamente o que vamos fazer aqui.";
 
-            await SaveConversationAsync(context.Session.Id, welcomePrompt, welcomeMessage);
+            var welcomeMessage = await ProcessWithAIAsync(context, startPrompt, context.Mentorship.AssistantId);
+
+            await SaveConversationAsync(context.Session.Id, startPrompt, welcomeMessage);
 
             // Get the correct service based on mentorship configuration
             var whatsAppService = _whatsAppServiceFactory.GetServiceForMentorship(context.Mentorship);
@@ -211,10 +230,6 @@ public class MessageProcessor : IMessageProcessor
         return existingMessages.Any(m => m.Role == "assistant");
     }
 
-    private static string BuildWelcomePrompt(string userName, Mentorship mentorship) =>
-        $"Welcome {userName} to the {mentorship.Name} program! " +
-        $"This is a {mentorship.DurationDays}-day mentorship program. " +
-        $"Introduce yourself as their AI mentor assistant and explain what they can expect during this journey. " +
-        $"Be warm, friendly, and encouraging. Start the conversation naturally and make them feel welcomed.";
+    private static string BuildWelcomePrompt(string userName, Mentorship mentorship, string startMessage) => startMessage;
 }
 

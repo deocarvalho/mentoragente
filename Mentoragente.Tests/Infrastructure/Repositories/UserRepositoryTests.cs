@@ -46,9 +46,6 @@ public class UserRepositoryTests
     [Fact]
     public async Task GetUserByPhoneAsync_ShouldReturnNullWhenNotFound()
     {
-        // Arrange
-        var phoneNumber = "5511999999999";
-
         // Act & Assert
         // Note: This would require mocking Supabase Postgrest client
         await Task.CompletedTask;

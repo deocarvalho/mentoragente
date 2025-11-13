@@ -225,7 +225,7 @@ public class MentorshipServiceTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task CreateMentorshipAsync_ShouldThrowWhenNameIsInvalid(string name)
+    public async Task CreateMentorshipAsync_ShouldThrowWhenNameIsInvalid(string? name)
     {
         // Arrange
         var mentorId = Guid.NewGuid();
@@ -244,7 +244,7 @@ public class MentorshipServiceTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task CreateMentorshipAsync_ShouldThrowWhenAssistantIdIsInvalid(string assistantId)
+    public async Task CreateMentorshipAsync_ShouldThrowWhenAssistantIdIsInvalid(string? assistantId)
     {
         // Arrange
         var mentorId = Guid.NewGuid();
@@ -337,7 +337,7 @@ public class MentorshipServiceTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task CreateMentorshipAsync_ShouldThrowWhenInstanceCodeIsInvalid(string instanceCode)
+    public async Task CreateMentorshipAsync_ShouldThrowWhenInstanceCodeIsInvalid(string? instanceCode)
     {
         // Arrange
         var mentorId = Guid.NewGuid();

@@ -12,7 +12,7 @@ namespace Mentoragente.Tests.Application.Services;
 public class MessageProcessorAdditionalTests
 {
     private readonly Mock<IUserOrchestrationService> _mockUserOrchestrationService;
-    private readonly Mock<IMentorshipRepository> _mockMentorshipRepository;
+    private readonly Mock<IMentorshipCacheService> _mockMentorshipCacheService;
     private readonly Mock<IAgentSessionOrchestrationService> _mockSessionOrchestrationService;
     private readonly Mock<IAccessValidationService> _mockAccessValidationService;
     private readonly Mock<IConversationRepository> _mockConversationRepository;
@@ -25,7 +25,7 @@ public class MessageProcessorAdditionalTests
     public MessageProcessorAdditionalTests()
     {
         _mockUserOrchestrationService = new Mock<IUserOrchestrationService>();
-        _mockMentorshipRepository = new Mock<IMentorshipRepository>();
+        _mockMentorshipCacheService = new Mock<IMentorshipCacheService>();
         _mockSessionOrchestrationService = new Mock<IAgentSessionOrchestrationService>();
         _mockAccessValidationService = new Mock<IAccessValidationService>();
         _mockConversationRepository = new Mock<IConversationRepository>();
@@ -36,7 +36,7 @@ public class MessageProcessorAdditionalTests
         
         _messageProcessor = new MessageProcessor(
             _mockUserOrchestrationService.Object,
-            _mockMentorshipRepository.Object,
+            _mockMentorshipCacheService.Object,
             _mockSessionOrchestrationService.Object,
             _mockAccessValidationService.Object,
             _mockConversationRepository.Object,
@@ -60,7 +60,7 @@ public class MessageProcessorAdditionalTests
         _mockUserOrchestrationService.Setup(x => x.GetOrCreateUserAsync(phoneNumber))
             .ReturnsAsync(user);
 
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+        _mockMentorshipCacheService.Setup(x => x.GetMentorshipAsync(mentorshipId))
             .ReturnsAsync((Mentorship?)null);
 
         // Act & Assert
@@ -110,7 +110,7 @@ public class MessageProcessorAdditionalTests
         _mockUserOrchestrationService.Setup(x => x.GetOrCreateUserAsync(phoneNumber))
             .ReturnsAsync(user);
 
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+        _mockMentorshipCacheService.Setup(x => x.GetMentorshipAsync(mentorshipId))
             .ReturnsAsync(mentorship);
 
         _mockSessionOrchestrationService.Setup(x => x.GetOrCreateSessionContextAsync(userId, mentorshipId, mentorship.DurationDays))
@@ -177,7 +177,7 @@ public class MessageProcessorAdditionalTests
         _mockUserOrchestrationService.Setup(x => x.GetOrCreateUserAsync(phoneNumber))
             .ReturnsAsync(user);
 
-        _mockMentorshipRepository.Setup(x => x.GetMentorshipByIdAsync(mentorshipId))
+        _mockMentorshipCacheService.Setup(x => x.GetMentorshipAsync(mentorshipId))
             .ReturnsAsync(mentorship);
 
         _mockSessionOrchestrationService.Setup(x => x.GetOrCreateSessionContextAsync(userId, mentorshipId, mentorship.DurationDays))
