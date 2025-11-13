@@ -3,6 +3,7 @@ using Mentoragente.Application.Adapters;
 using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Models;
+using System.Text.Json;
 
 namespace Mentoragente.API.Controllers;
 
@@ -45,6 +46,11 @@ public class ZApiWebhookController : ControllerBase
         [FromBody] ZApiWebhookDto webhook,
         [FromQuery] Guid mentorshipId)
     {
+        // Log the complete webhook payload for debugging
+        var payloadJson = JsonSerializer.Serialize(webhook, new JsonSerializerOptions { WriteIndented = false });
+        _logger.LogInformation("Received Z-API webhook payload for Mentorship {MentorshipId}: {Payload}", 
+            mentorshipId, payloadJson);
+
         if (mentorshipId == Guid.Empty)
         {
             return BadRequest(new { success = false, message = "MentorshipId query parameter is required" });
@@ -54,6 +60,8 @@ public class ZApiWebhookController : ControllerBase
         var genericMessage = _adapter.Adapt(webhook);
         if (genericMessage == null)
         {
+            _logger.LogWarning("Z-API webhook message was ignored. FromMe={FromMe}, Type={Type}, Phone={Phone}, HasText={HasText}, Text={Text}", 
+                webhook.FromMe, webhook.Type, webhook.Phone, webhook.Text?.Message != null, webhook.Text?.Message ?? "null");
             return Ok(new { success = true, message = "Message ignored" });
         }
 
