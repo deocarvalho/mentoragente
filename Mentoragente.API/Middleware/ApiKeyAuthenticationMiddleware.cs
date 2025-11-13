@@ -28,9 +28,12 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Skip authentication for health checks and Swagger
-        if (Request.Path.StartsWithSegments("/health") || 
-            Request.Path.StartsWithSegments("/swagger"))
+        // Skip authentication for health checks, root endpoint, Swagger, and webhooks
+        // Webhooks are called by external services (Z-API, Evolution API) and don't use API Key
+        if (Request.Path == "/" ||
+            Request.Path.StartsWithSegments("/health") || 
+            Request.Path.StartsWithSegments("/swagger") ||
+            Request.Path.StartsWithSegments("/api/webhooks"))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
