@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Mentoragente.API.Controllers;
 using Mentoragente.Application.Adapters;
 using Mentoragente.Application.Services;
@@ -30,6 +31,9 @@ public class ZApiWebhookControllerTests
     private readonly Mock<ILogger<ZApiWebhookController>> _mockLogger;
     private readonly Mock<ILogSanitizer> _mockLogSanitizer;
     private readonly Mock<IWebHostEnvironment> _mockEnvironment;
+    private readonly Mock<IServiceScopeFactory> _mockServiceScopeFactory;
+    private readonly Mock<IServiceScope> _mockServiceScope;
+    private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly ZApiWebhookController _controller;
     private readonly DefaultHttpContext _httpContext;
 
@@ -46,6 +50,9 @@ public class ZApiWebhookControllerTests
         _mockLogger = new Mock<ILogger<ZApiWebhookController>>();
         _mockLogSanitizer = new Mock<ILogSanitizer>();
         _mockEnvironment = new Mock<IWebHostEnvironment>();
+        _mockServiceScopeFactory = new Mock<IServiceScopeFactory>();
+        _mockServiceScope = new Mock<IServiceScope>();
+        _mockServiceProvider = new Mock<IServiceProvider>();
         _httpContext = new DefaultHttpContext();
         
         // Setup default log sanitizer behavior (return input as-is for tests)
@@ -60,6 +67,11 @@ public class ZApiWebhookControllerTests
         _mockEnvironment.Setup(x => x.ContentRootPath).Returns(".");
         _mockEnvironment.Setup(x => x.WebRootPath).Returns("wwwroot");
 
+        // Setup service scope factory for background tasks
+        _mockServiceScope.Setup(x => x.ServiceProvider).Returns(_mockServiceProvider.Object);
+        _mockServiceScopeFactory.Setup(x => x.CreateScope()).Returns(_mockServiceScope.Object);
+        _mockServiceProvider.Setup(x => x.GetRequiredService<IWhatsAppServiceFactory>()).Returns(_mockWhatsAppServiceFactory.Object);
+
         _controller = new ZApiWebhookController(
             _mockMessageProcessor.Object,
             _mockWhatsAppServiceFactory.Object,
@@ -71,7 +83,8 @@ public class ZApiWebhookControllerTests
             _mockConfiguration.Object,
             _mockLogger.Object,
             _mockLogSanitizer.Object,
-            _mockEnvironment.Object);
+            _mockEnvironment.Object,
+            _mockServiceScopeFactory.Object);
         
         _controller.ControllerContext = new ControllerContext
         {

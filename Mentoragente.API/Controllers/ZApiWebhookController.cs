@@ -4,8 +4,10 @@ using Mentoragente.Application.Adapters;
 using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Models;
+using Mentoragente.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Swashbuckle.AspNetCore.Annotations;
@@ -31,6 +33,7 @@ public class ZApiWebhookController : ControllerBase
     private readonly ILogger<ZApiWebhookController> _logger;
     private readonly ILogSanitizer _logSanitizer;
     private readonly IWebHostEnvironment _environment;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private const string DefaultUnauthorizedMessage = "Sinto muito, mas este número de telefone não tem acesso a este contato. Se você acredita que houve um engano, por favor, entre em contato com a pessoa gestora do seu contrato.";
     
     // In-memory cache for deduplication (MessageId -> timestamp)
@@ -48,7 +51,8 @@ public class ZApiWebhookController : ControllerBase
         IConfiguration configuration,
         ILogger<ZApiWebhookController> logger,
         ILogSanitizer logSanitizer,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IServiceScopeFactory serviceScopeFactory)
     {
         _messageProcessor = messageProcessor;
         _whatsAppServiceFactory = whatsAppServiceFactory;
@@ -61,6 +65,7 @@ public class ZApiWebhookController : ControllerBase
         _logger = logger;
         _logSanitizer = logSanitizer;
         _environment = environment;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     /// <summary>
@@ -172,30 +177,47 @@ public class ZApiWebhookController : ControllerBase
             genericMessage.MessageText, 
                 mentorshipId.Value);
 
+            // Capture variables needed for background task (before request scope is disposed)
+            var phoneNumber = genericMessage.PhoneNumber;
+            var response = result.Response;
+            var mentorshipForSend = new Mentorship
+            {
+                Id = result.Mentorship.Id,
+                InstanceCode = result.Mentorship.InstanceCode,
+                InstanceToken = result.Mentorship.InstanceToken,
+                WhatsAppProvider = result.Mentorship.WhatsAppProvider
+            };
+
             // Send response in parallel (fire-and-forget) to avoid blocking webhook response
             // This improves perceived latency - webhook returns immediately while message is sent in background
+            // IMPORTANT: Create a new service scope for background task to avoid ObjectDisposedException
             _ = Task.Run(async () =>
             {
+                // Create a new service scope for the background task
+                using var scope = _serviceScopeFactory.CreateScope();
                 try
                 {
-        var whatsAppService = _whatsAppServiceFactory.GetServiceForMentorship(result.Mentorship);
-        var sent = await whatsAppService.SendMessageAsync(
-            genericMessage.PhoneNumber, 
-            result.Response, 
-            result.Mentorship);
+                    // Get services from the new scope
+                    var whatsAppServiceFactory = scope.ServiceProvider.GetRequiredService<IWhatsAppServiceFactory>();
+                    var whatsAppService = whatsAppServiceFactory.GetServiceForMentorship(mentorshipForSend);
+                    
+                    var sent = await whatsAppService.SendMessageAsync(
+                        phoneNumber, 
+                        response, 
+                        mentorshipForSend);
 
-        if (!sent)
-        {
-                        _logger.LogError("Failed to send response to {PhoneNumber} in background", genericMessage.PhoneNumber);
+                    if (!sent)
+                    {
+                        _logger.LogError("Failed to send response to {PhoneNumber} in background", phoneNumber);
                     }
                     else
                     {
-                        _logger.LogDebug("Response sent successfully to {PhoneNumber} in background", genericMessage.PhoneNumber);
+                        _logger.LogDebug("Response sent successfully to {PhoneNumber} in background", phoneNumber);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error sending response to {PhoneNumber} in background", genericMessage.PhoneNumber);
+                    _logger.LogError(ex, "Error sending response to {PhoneNumber} in background", phoneNumber);
                 }
             });
 
@@ -216,15 +238,29 @@ public class ZApiWebhookController : ControllerBase
                 var mentorship = await _mentorshipCacheService.GetMentorshipAsync(mentorshipId.Value);
                 if (mentorship != null)
                 {
+                    // Capture variables needed for background task
+                    var phoneNumber = genericMessage.PhoneNumber;
+                    var errorMessage = _configuration["Messages:UnauthorizedAccess"] ?? DefaultUnauthorizedMessage;
+                    var mentorshipForError = new Mentorship
+                    {
+                        Id = mentorship.Id,
+                        InstanceCode = mentorship.InstanceCode,
+                        InstanceToken = mentorship.InstanceToken,
+                        WhatsAppProvider = mentorship.WhatsAppProvider
+                    };
+
+                    // Create a new service scope for the background task
                     _ = Task.Run(async () =>
                     {
+                        using var scope = _serviceScopeFactory.CreateScope();
                         try
                         {
-                            var whatsAppService = _whatsAppServiceFactory.GetServiceForMentorship(mentorship);
+                            var whatsAppServiceFactory = scope.ServiceProvider.GetRequiredService<IWhatsAppServiceFactory>();
+                            var whatsAppService = whatsAppServiceFactory.GetServiceForMentorship(mentorshipForError);
                             await whatsAppService.SendMessageAsync(
-                                genericMessage.PhoneNumber, 
-                                _configuration["Messages:UnauthorizedAccess"] ?? DefaultUnauthorizedMessage, 
-                                mentorship);
+                                phoneNumber, 
+                                errorMessage, 
+                                mentorshipForError);
                         }
                         catch { /* Ignore errors when sending error message */ }
                     });
