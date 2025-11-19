@@ -42,11 +42,11 @@ public class Program
                 c.IncludeXmlComments(xmlPath);
             }
 
-            // Add Client-Token security definition for Z-API webhooks
-            c.AddSecurityDefinition("Client-Token", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            // Add Z-Api-Token security definition for Z-API webhooks
+            c.AddSecurityDefinition("Z-Api-Token", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
-                Description = "Z-API Client-Token for webhook authentication. Required for Z-API webhook endpoints. Get this token from your Z-API account settings.",
-                Name = "Client-Token",
+                Description = "Z-API Token for webhook authentication. Z-API automatically sends this header in webhook requests. Get this token from your Z-API instance settings.",
+                Name = "Z-Api-Token",
                 In = Microsoft.OpenApi.Models.ParameterLocation.Header,
                 Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey
             });

@@ -5,7 +5,7 @@ using System.Linq;
 namespace Mentoragente.API.Filters;
 
 /// <summary>
-/// Swagger operation filter that adds Client-Token security requirement to Z-API webhook endpoints
+/// Swagger operation filter that adds Z-Api-Token security requirement to Z-API webhook endpoints
 /// </summary>
 public class ZApiWebhookSecurityFilter : IOperationFilter
 {
@@ -27,7 +27,7 @@ public class ZApiWebhookSecurityFilter : IOperationFilter
                         Reference = new OpenApiReference
                         {
                             Type = ReferenceType.SecurityScheme,
-                            Id = "Client-Token"
+                            Id = "Z-Api-Token"
                         }
                     },
                     Array.Empty<string>()

@@ -25,14 +25,14 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
 {
     private readonly E2ETestHelper _helper;
     private readonly HttpClient _client;
-    private readonly string _clientToken;
+    private readonly string _instanceToken;
 
     public WebhookE2ETests(E2ETestHelper helper)
     {
         _helper = helper;
         _client = helper.Client;
-        // Token de teste (deve ser configurado no appsettings de teste)
-        _clientToken = "test-client-token-e2e";
+        // Token de instância para teste (deve corresponder ao instance_token na mentorship)
+        _instanceToken = "test-instance-token-e2e";
     }
 
     [Fact]
@@ -61,9 +61,9 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
 
         // Act - Enviar webhook
         _client.DefaultRequestHeaders.Clear();
-        _client.DefaultRequestHeaders.Add("Client-Token", _clientToken);
+        _client.DefaultRequestHeaders.Add("Z-Api-Token", _instanceToken);
         
-        var response = await _client.PostAsJsonAsync($"/api/webhooks/zapi?mentorshipId={mentorshipId}", webhook);
+        var response = await _client.PostAsJsonAsync($"/api/webhooks/zapi", webhook);
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
@@ -101,9 +101,9 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
 
         // Act
         _client.DefaultRequestHeaders.Clear();
-        _client.DefaultRequestHeaders.Add("Client-Token", _clientToken);
+        _client.DefaultRequestHeaders.Add("Z-Api-Token", _instanceToken);
         
-        var response = await _client.PostAsJsonAsync($"/api/webhooks/zapi?mentorshipId={mentorshipId}", webhook);
+        var response = await _client.PostAsJsonAsync($"/api/webhooks/zapi", webhook);
 
         // Assert
         // Deve retornar BadRequest porque usuário não está enrolled
@@ -115,7 +115,7 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
 
     [Fact]
     [Trait("Requires", "Docker")]
-    public async Task ZApiWebhook_E2E_ShouldRejectInvalidClientToken()
+    public async Task ZApiWebhook_E2E_ShouldRejectInvalidZApiToken()
     {
         // Arrange
         var webhook = new ZApiWebhookDto
@@ -127,9 +127,9 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
             Text = new ZApiTextMessage { Message = "Test" }
         };
 
-        // Act - Enviar com token inválido
+        // Act - Enviar com token inválido (não existe mentorship com esse instance_token)
         _client.DefaultRequestHeaders.Clear();
-        _client.DefaultRequestHeaders.Add("Client-Token", "invalid-token");
+        _client.DefaultRequestHeaders.Add("Z-Api-Token", "invalid-instance-token");
         
         var response = await _client.PostAsJsonAsync("/api/webhooks/zapi", webhook);
 
@@ -137,7 +137,7 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         
         var content = await response.Content.ReadAsStringAsync();
-        content.ToLowerInvariant().Should().Contain("client-token", because: "Should reject invalid Client-Token");
+        content.ToLowerInvariant().Should().Contain("z-api-token", because: "Should reject invalid Z-Api-Token");
     }
 
     [Fact]
@@ -162,16 +162,17 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
             }
         };
 
-        // Act - NÃO passar mentorshipId (deve auto-detectar)
+        // Act - NÃO passar mentorshipId (deve identificar pela instance_token)
         _client.DefaultRequestHeaders.Clear();
-        _client.DefaultRequestHeaders.Add("Client-Token", _clientToken);
+        _client.DefaultRequestHeaders.Add("Z-Api-Token", _instanceToken);
         
         var response = await _client.PostAsJsonAsync("/api/webhooks/zapi", webhook);
 
         // Assert
         // Deve processar (OK ou BadRequest se OpenAI não configurado)
-        // Mas NÃO deve dar erro de "mentorship not found"
+        // Mas NÃO deve dar erro de "mentorship not found" ou "unauthorized"
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -196,10 +197,10 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
 
         // Act - Enviar mesma mensagem duas vezes
         _client.DefaultRequestHeaders.Clear();
-        _client.DefaultRequestHeaders.Add("Client-Token", _clientToken);
+        _client.DefaultRequestHeaders.Add("Z-Api-Token", _instanceToken);
         
-        var firstResponse = await _client.PostAsJsonAsync($"/api/webhooks/zapi?mentorshipId={mentorshipId}", webhook);
-        var secondResponse = await _client.PostAsJsonAsync($"/api/webhooks/zapi?mentorshipId={mentorshipId}", webhook);
+        var firstResponse = await _client.PostAsJsonAsync($"/api/webhooks/zapi", webhook);
+        var secondResponse = await _client.PostAsJsonAsync($"/api/webhooks/zapi", webhook);
 
         // Assert
         firstResponse.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
@@ -237,9 +238,10 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
     private async Task<Guid> CreateTestMentorship(Guid mentorId)
     {
         var mentorshipId = Guid.NewGuid();
+        var instanceToken = "test-instance-token-e2e";
         var sql = @"
-            INSERT INTO mentorships (id, name, mentor_id, assistant_id, duration_days, status, whatsapp_provider, instance_code)
-            VALUES (@id, @name, @mentorId, @assistantId, @durationDays, @status, @provider, @instanceCode)
+            INSERT INTO mentorships (id, name, mentor_id, assistant_id, duration_days, status, whatsapp_provider, instance_code, instance_token)
+            VALUES (@id, @name, @mentorId, @assistantId, @durationDays, @status, @provider, @instanceCode, @instanceToken)
         ";
 
         using var connection = new NpgsqlConnection(_helper.ConnectionString);
@@ -254,6 +256,7 @@ public class WebhookE2ETests : IClassFixture<E2ETestHelper>, IDisposable
         command.Parameters.AddWithValue("status", "Active");
         command.Parameters.AddWithValue("provider", "ZApi");
         command.Parameters.AddWithValue("instanceCode", "test_instance");
+        command.Parameters.AddWithValue("instanceToken", instanceToken);
         
         await command.ExecuteNonQueryAsync();
         return mentorshipId;

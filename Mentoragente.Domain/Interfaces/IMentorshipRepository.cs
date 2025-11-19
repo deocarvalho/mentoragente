@@ -5,6 +5,7 @@ namespace Mentoragente.Domain.Interfaces;
 public interface IMentorshipRepository
 {
     Task<Mentorship?> GetMentorshipByIdAsync(Guid id);
+    Task<Mentorship?> GetMentorshipByInstanceTokenAsync(string instanceToken);
     Task<List<Mentorship>> GetMentorshipsByMentorIdAsync(Guid mentorId);
     Task<List<Mentorship>> GetMentorshipsByMentorIdAsync(Guid mentorId, int skip, int take);
     Task<int> GetMentorshipsCountByMentorIdAsync(Guid mentorId);

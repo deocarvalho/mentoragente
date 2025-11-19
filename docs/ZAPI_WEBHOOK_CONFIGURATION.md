@@ -1,53 +1,75 @@
 # 🔧 Configuração de Webhook Z-API
 
-## ⚠️ Problema: "Missing Client-Token header"
+## 📋 Entendendo os Tokens
 
-Se você está vendo este erro nos logs:
-```
-Z-API webhook rejected: Missing Client-Token header
-```
+### Client-Token
+- **O que é:** Token único por conta Z-API
+- **Onde fica:** `appsettings.json` → `ZApi:Client-Token` (variável de ambiente: `ZApi__Client-Token`)
+- **Para que serve:** Autenticar requisições que **FAZEMOS** para a API do Z-API
+- **Exemplo:** Quando enviamos mensagens via `ZApiService.SendMessageAsync()`
 
-**Causa:** O Z-API não está enviando o header `Client-Token` nas requisições de webhook.
+### Z-Api-Token (instance_token)
+- **O que é:** Token único por instância Z-API
+- **Onde fica:** Tabela `mentorships.instance_token` no banco de dados
+- **Para que serve:** 
+  - Identificar a mentorship quando o Z-API envia webhooks
+  - O Z-API envia automaticamente no header `Z-Api-Token` de cada webhook
+- **Validação:** O sistema busca a mentorship ativa que tem esse `instance_token`
 
 ---
 
-## ✅ Solução: Configurar Webhook no Z-API
+## ⚠️ Problema: "Missing Z-Api-Token header" ou "No active mentorship found"
 
-O Z-API precisa ser configurado para **enviar** o `Client-Token` no header de cada webhook.
+Se você está vendo estes erros nos logs:
+```
+Z-API webhook rejected: Missing Z-Api-Token header
+```
+ou
+```
+Z-API webhook rejected: No active mentorship found for instance token
+```
 
-### Passo 1: Obter o Client-Token
+**Causas possíveis:**
+1. Z-API não está enviando o header `Z-Api-Token` (improvável)
+2. O `instance_token` na tabela `mentorships` não corresponde ao token que o Z-API está enviando
+3. A mentorship está inativa ou não existe
+
+---
+
+## ✅ Solução: Configurar instance_token na Mentorship
+
+### Passo 1: Obter o Z-Api-Token da Instância
 
 1. Acesse o painel do Z-API
-2. Vá em **Configurações** → **Webhooks** (ou similar)
-3. Encontre o **Client-Token** da sua instância
-4. **Copie o token** (exemplo: `F019f245f5d454e4cadff6f85bb3f4131S`)
+2. Vá em **Configurações** → **Instância** (ou similar)
+3. Encontre o **Token da Instância** (exemplo: `71AD58EA2BA03C41A38C5C3B`)
+4. **Copie o token**
 
-### Passo 2: Configurar Webhook no Z-API
+### Passo 2: Configurar na Mentorship
 
-No painel do Z-API, ao configurar o webhook:
+Ao criar ou atualizar uma mentorship, configure o `instance_token` com o token da instância Z-API:
 
-1. **URL do Webhook:**
-   ```
-   https://mentoragente-lpx7.onrender.com/api/webhooks/zapi
-   ```
+```json
+{
+  "name": "Minha Mentoria",
+  "instanceCode": "3EA14DA371360142A582CEE0FE05F6ED",
+  "instanceToken": "71AD58EA2BA03C41A38C5C3B",
+  "whatsAppProvider": "ZApi"
+}
+```
 
-2. **Headers Customizados:**
-   - **Nome do Header:** `Client-Token`
-   - **Valor:** Seu Client-Token (ex: `F019f245f5d454e4cadff6f85bb3f4131S`)
+**Importante:** 
+- O `instance_token` deve ser o **mesmo** que o Z-API envia no header `Z-Api-Token`
+- Cada instância Z-API tem seu próprio token único
+- O sistema valida o webhook buscando a mentorship ativa com esse `instance_token`
 
-3. **Método:** `POST`
-
-4. **Content-Type:** `application/json`
-
-### Passo 3: Verificar Variável de Ambiente no Render
-
-Certifique-se de que a variável está configurada no Render:
+### Passo 3: Configurar Client-Token no Render (para requisições que fazemos ao Z-API)
 
 ```
 ZApi__Client-Token=F019f245f5d454e4cadff6f85bb3f4131S
 ```
 
-**Importante:** O valor deve ser **exatamente o mesmo** que você configurou no webhook do Z-API.
+**Nota:** Este é o token da **conta** Z-API (não da instância), usado para autenticar requisições que fazemos para a API do Z-API.
 
 ---
 
@@ -62,21 +84,21 @@ Após configurar, você deve ver nos logs:
 
 Em vez de:
 ```
-❌ Z-API webhook rejected: Missing Client-Token header
+❌ Z-API webhook rejected: Missing Z-Api-Token header
 ```
 
 ### 2. Testar Manualmente
 
 ```bash
-# Testar sem Client-Token (deve falhar)
+# Testar sem Z-Api-Token (deve falhar)
 curl -X POST https://mentoragente-lpx7.onrender.com/api/webhooks/zapi \
   -H "Content-Type: application/json" \
   -d '{"phone": "5511999999999", "text": {"message": "test"}}'
 
-# Testar COM Client-Token (deve funcionar)
+# Testar COM Z-Api-Token (deve funcionar)
 curl -X POST https://mentoragente-lpx7.onrender.com/api/webhooks/zapi \
   -H "Content-Type: application/json" \
-  -H "Client-Token: F019f245f5d454e4cadff6f85bb3f4131S" \
+  -H "Z-Api-Token: 71AD58EA2BA03C41A38C5C3B" \
   -d '{"phone": "5511999999999", "text": {"message": "test"}}'
 ```
 
@@ -84,36 +106,42 @@ curl -X POST https://mentoragente-lpx7.onrender.com/api/webhooks/zapi \
 
 ## 📋 Checklist de Configuração
 
-- [ ] Client-Token obtido do painel Z-API
-- [ ] Webhook configurado no Z-API com header `Client-Token`
-- [ ] Variável `ZApi__Client-Token` configurada no Render
-- [ ] Valores são **idênticos** (Z-API e Render)
+- [ ] **Client-Token** configurado no Render (`ZApi__Client-Token`) - token da conta Z-API
+- [ ] **instance_token** configurado na mentorship - token da instância Z-API
+- [ ] Webhook configurado no Z-API com URL: `https://mentoragente-lpx7.onrender.com/api/webhooks/zapi`
+- [ ] Valores são **idênticos** (token que Z-API envia no header `Z-Api-Token` = `instance_token` na mentorship)
+- [ ] Mentorship está **ativa** (status = Active)
 - [ ] Webhook testado e funcionando
 
 ---
 
 ## ⚠️ Problemas Comuns
 
-### 1. "Missing Client-Token header"
-**Causa:** Z-API não está enviando o header  
-**Solução:** Configurar header customizado no webhook do Z-API
+### 1. "Missing Z-Api-Token header"
+**Causa:** Z-API não está enviando o header (improvável - Z-API sempre envia)  
+**Solução:** Verificar se o webhook está configurado corretamente no Z-API
 
-### 2. "Invalid Client-Token"
-**Causa:** Token no header não corresponde ao token no Render  
-**Solução:** Verificar se os valores são idênticos (case-sensitive)
+### 2. "No active mentorship found for instance token"
+**Causa:** O `instance_token` na mentorship não corresponde ao token que o Z-API está enviando, ou a mentorship está inativa  
+**Solução:** 
+- Verificar se o `instance_token` na mentorship é idêntico ao token que o Z-API envia (case-sensitive)
+- Verificar se a mentorship está ativa (status = Active)
+- Atualizar a mentorship com o `instance_token` correto
 
 ### 3. "Z-API Client-Token not configured"
 **Causa:** Variável `ZApi__Client-Token` não está configurada no Render  
-**Solução:** Adicionar variável de ambiente no Render
+**Solução:** Adicionar variável de ambiente `ZApi__Client-Token` no Render com o token da **conta** Z-API (não da instância)
 
 ---
 
 ## 🔐 Segurança
 
-- ✅ **Nunca** compartilhe o Client-Token publicamente
-- ✅ Use tokens **diferentes** para HMG e PRD (se usar instâncias diferentes)
-- ✅ O token é validado em **cada requisição** de webhook
-- ✅ Webhooks sem token válido são **rejeitados** (401 Unauthorized)
+- ✅ **Nunca** compartilhe o Client-Token ou instance_token publicamente
+- ✅ **Client-Token**: Token da conta, usado para requisições que fazemos ao Z-API
+- ✅ **instance_token**: Token da instância, validado contra a tabela `mentorships` em cada webhook
+- ✅ Webhooks sem token válido ou sem mentorship correspondente são **rejeitados** (401 Unauthorized)
+- ✅ O Z-API **envia automaticamente** o header `Z-Api-Token` - você não precisa configurar headers customizados
+- ✅ Cada mentorship pode ter seu próprio `instance_token` (suporta múltiplas instâncias Z-API)
 
 ---
 

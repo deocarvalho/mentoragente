@@ -26,6 +26,7 @@ public class ZApiWebhookController : ControllerBase
     private readonly IUserOrchestrationService _userOrchestrationService;
     private readonly IAgentSessionService _agentSessionService;
     private readonly IMentorshipCacheService _mentorshipCacheService;
+    private readonly IMentorshipRepository _mentorshipRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ZApiWebhookController> _logger;
     private readonly ILogSanitizer _logSanitizer;
@@ -43,6 +44,7 @@ public class ZApiWebhookController : ControllerBase
         IUserOrchestrationService userOrchestrationService,
         IAgentSessionService agentSessionService,
         IMentorshipCacheService mentorshipCacheService,
+        IMentorshipRepository mentorshipRepository,
         IConfiguration configuration,
         ILogger<ZApiWebhookController> logger,
         ILogSanitizer logSanitizer,
@@ -54,6 +56,7 @@ public class ZApiWebhookController : ControllerBase
         _userOrchestrationService = userOrchestrationService;
         _agentSessionService = agentSessionService;
         _mentorshipCacheService = mentorshipCacheService;
+        _mentorshipRepository = mentorshipRepository;
         _configuration = configuration;
         _logger = logger;
         _logSanitizer = logSanitizer;
@@ -68,16 +71,16 @@ public class ZApiWebhookController : ControllerBase
     /// <returns>Success response</returns>
     /// <response code="200">Message processed successfully or ignored</response>
     /// <response code="400">Invalid request, user not enrolled, or failed to send response</response>
-    /// <response code="401">Invalid or missing Client-Token header</response>
+    /// <response code="401">Invalid or missing Z-Api-Token header</response>
     [HttpPost]
     [SwaggerOperation(
         Summary = "Receives Z-API webhook messages",
-        Description = "This endpoint receives webhook messages from Z-API. Requires Client-Token header for authentication. Click the 'Authorize' button in Swagger UI to add your Client-Token.",
+        Description = "This endpoint receives webhook messages from Z-API. Z-API automatically sends Z-Api-Token header for authentication. Click the 'Authorize' button in Swagger UI to add your Z-Api-Token for testing.",
         OperationId = "ReceiveZApiWebhook"
     )]
     [SwaggerResponse(200, "Message processed successfully or ignored")]
     [SwaggerResponse(400, "Invalid request, user not enrolled, or failed to send response")]
-    [SwaggerResponse(401, "Invalid or missing Client-Token header")]
+    [SwaggerResponse(401, "Invalid or missing Z-Api-Token header")]
     public async Task<IActionResult> ReceiveMessage(
         [FromBody] ZApiWebhookDto webhook,
         [FromQuery] Guid? mentorshipId = null)
@@ -88,27 +91,39 @@ public class ZApiWebhookController : ControllerBase
             LogCompleteRequest(webhook);
         }
 
-        // Validate Client-Token header
-        if (!Request.Headers.TryGetValue("Client-Token", out var clientTokenHeader) || 
-            string.IsNullOrWhiteSpace(clientTokenHeader))
+        // Validate Z-Api-Token header (Z-API sends this header in webhooks)
+        // This token corresponds to instance_token in the mentorships table
+        if (!Request.Headers.TryGetValue("Z-Api-Token", out var zApiTokenHeader) || 
+            string.IsNullOrWhiteSpace(zApiTokenHeader))
         {
-            _logger.LogWarning("Z-API webhook rejected: Missing Client-Token header");
-            return Unauthorized(new { success = false, message = "Missing or invalid Client-Token header" });
+            _logger.LogWarning("Z-API webhook rejected: Missing Z-Api-Token header");
+            return Unauthorized(new { success = false, message = "Missing or invalid Z-Api-Token header" });
         }
 
-        var expectedClientToken = _configuration["ZApi:Client-Token"];
-        if (string.IsNullOrWhiteSpace(expectedClientToken))
+        var instanceToken = zApiTokenHeader.ToString();
+        
+        // Find mentorship by instance_token (Z-Api-Token from header)
+        var mentorshipByToken = await _mentorshipRepository.GetMentorshipByInstanceTokenAsync(instanceToken);
+        
+        if (mentorshipByToken == null)
         {
-            _logger.LogError("Z-API Client-Token not configured in appsettings.json");
-            return StatusCode(500, new { success = false, message = "Server configuration error" });
+            _logger.LogWarning("Z-API webhook rejected: No active mentorship found for instance token. Received: {ReceivedToken}", 
+                _logSanitizer.MaskToken(instanceToken));
+            return Unauthorized(new { success = false, message = "Invalid Z-Api-Token: No active mentorship found for this instance token" });
         }
 
-        if (clientTokenHeader.ToString() != expectedClientToken)
+        // If mentorshipId is provided in query, validate it matches the token's mentorship
+        if (mentorshipId.HasValue && mentorshipId.Value != mentorshipByToken.Id)
         {
-            _logger.LogWarning("Z-API webhook rejected: Invalid Client-Token. Received: {ReceivedToken}", 
-                _logSanitizer.MaskToken(clientTokenHeader.ToString()));
-            return Unauthorized(new { success = false, message = "Invalid Client-Token" });
+            _logger.LogWarning("Z-API webhook rejected: Provided mentorshipId {ProvidedId} does not match the mentorship for instance token {Token}", 
+                mentorshipId.Value, _logSanitizer.MaskToken(instanceToken));
+            return BadRequest(new { success = false, message = "MentorshipId does not match the instance token" });
         }
+
+        // Use the mentorship found by token (or override with query param if provided and matches)
+        mentorshipId = mentorshipByToken.Id;
+        _logger.LogInformation("Z-API webhook authenticated. Mentorship: {MentorshipId}, Instance Token: {Token}", 
+            mentorshipId, _logSanitizer.MaskToken(instanceToken));
 
         // Log the sanitized webhook payload for debugging (sensitive data masked)
         var payloadJson = JsonSerializer.Serialize(webhook, new JsonSerializerOptions { WriteIndented = false });
@@ -128,39 +143,7 @@ public class ZApiWebhookController : ControllerBase
             return Ok(new { success = true, message = "Message ignored" });
         }
 
-        // Auto-detect mentorship if not provided
-        if (!mentorshipId.HasValue || mentorshipId.Value == Guid.Empty)
-        {
-            _logger.LogInformation("MentorshipId not provided, auto-detecting for phone {PhoneNumber}", 
-                _logSanitizer.MaskPhoneNumber(genericMessage.PhoneNumber));
-            
-            var user = await _userOrchestrationService.GetUserAsync(genericMessage.PhoneNumber);
-            if (user == null)
-            {
-                _logger.LogWarning("User not found for phone {PhoneNumber} - user not enrolled", 
-                    _logSanitizer.MaskPhoneNumber(genericMessage.PhoneNumber));
-                return BadRequest(new { 
-                    success = false, 
-                    message = "You are not enrolled in any active mentorship. Please enroll first before sending messages." 
-                });
-            }
-            
-            var detectedMentorshipId = await _agentSessionService.AutoDetectMentorshipIdAsync(user.Id);
-            
-            if (!detectedMentorshipId.HasValue)
-            {
-                _logger.LogWarning("No active session found for user {UserId} (phone {PhoneNumber}) - user may not be enrolled in any mentorship", 
-                    user.Id, _logSanitizer.MaskPhoneNumber(genericMessage.PhoneNumber));
-                return BadRequest(new { 
-                    success = false, 
-                    message = "You are not enrolled in any active mentorship. Please enroll first before sending messages." 
-                });
-            }
-            
-            mentorshipId = detectedMentorshipId.Value;
-            _logger.LogInformation("Auto-detected mentorship {MentorshipId} for phone {PhoneNumber}", 
-                mentorshipId, _logSanitizer.MaskPhoneNumber(genericMessage.PhoneNumber));
-        }
+        // mentorshipId is now guaranteed to be set from the Z-Api-Token validation above
 
         // Deduplication: Check if we've already processed this message
         if (!string.IsNullOrEmpty(webhook.MessageId))

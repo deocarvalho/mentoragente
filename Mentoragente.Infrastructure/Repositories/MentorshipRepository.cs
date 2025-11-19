@@ -57,6 +57,31 @@ public class MentorshipRepository : IMentorshipRepository
         }
     }
 
+    public async Task<Mentorship?> GetMentorshipByInstanceTokenAsync(string instanceToken)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<Mentorship>()
+                .Select("*")
+                .Filter("instance_token", Operator.Equals, instanceToken)
+                .Filter("status", Operator.Equals, MentorshipStatus.Active.ToString())
+                .Get();
+
+            return response.Models.FirstOrDefault();
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving mentorship by instance token");
+            throw new InvalidOperationException($"Failed to retrieve mentorship by instance token: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving mentorship by instance token");
+            throw;
+        }
+    }
+
     public async Task<List<Mentorship>> GetMentorshipsByMentorIdAsync(Guid mentorId)
     {
         try
