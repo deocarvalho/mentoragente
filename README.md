@@ -161,10 +161,40 @@ See `DATABASE_SCHEMA.sql` for complete schema.
 
 ## 🧪 Testing
 
+### Automated Tests
+
+The project includes comprehensive automated tests:
+
+- **Unit Tests** (with mocks) - Fast, run on every commit
+- **E2E Tests** (with real database) - TestContainers with PostgreSQL
+- **Smoke Tests** - Validate deployed application
+
 ```bash
-# Run tests (when implemented)
+# Run all tests
 dotnet test
+
+# Run only fast tests (mocks)
+dotnet test --filter "Category!=E2E&Category!=Smoke"
+
+# Run E2E tests (requires Docker)
+dotnet test --filter "Category=E2E"
+
+# Run smoke tests (requires deployed app)
+$env:SMOKE_TEST_URL="https://your-app.onrender.com"
+dotnet test --filter "Category=Smoke"
 ```
+
+### GitHub Actions (CI/CD)
+
+Tests run automatically on every push via GitHub Actions:
+
+- ✅ Tests with mocks (fast)
+- ✅ E2E tests with real database (Docker)
+- ✅ Smoke tests after deploy (production)
+
+See [GitHub Actions Quick Start Guide](./docs/GITHUB_ACTIONS_QUICK_START.md) for setup instructions.
+
+![Tests](https://github.com/deocarvalho/mentoragente/actions/workflows/tests.yml/badge.svg)
 
 ## 🐳 Docker
 

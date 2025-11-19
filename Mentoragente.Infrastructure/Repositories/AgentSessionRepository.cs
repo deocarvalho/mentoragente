@@ -240,6 +240,32 @@ public class AgentSessionRepository : IAgentSessionRepository
         }
     }
 
+    public async Task<List<AgentSession>> GetActiveAgentSessionsByUserIdAsync(Guid userId)
+    {
+        try
+        {
+            var response = await _supabaseClient
+                .From<AgentSession>()
+                .Select("*")
+                .Filter("user_id", Operator.Equals, userId.ToString())
+                .Filter("status", Operator.Equals, AgentSessionStatus.Active.ToString())
+                .Order("last_interaction", Ordering.Descending)
+                .Get();
+
+            return response.Models;
+        }
+        catch (PostgrestException ex)
+        {
+            _logger.LogError(ex, "Postgrest error while retrieving active agent sessions for user {UserId}", userId);
+            throw new InvalidOperationException($"Failed to retrieve active agent sessions: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while retrieving active agent sessions for user {UserId}", userId);
+            throw;
+        }
+    }
+
     public async Task<int> GetAgentSessionsCountByUserIdAsync(Guid userId)
     {
         try
@@ -282,6 +308,29 @@ public class AgentSessionRepository : IAgentSessionRepository
         }
         catch (PostgrestException ex)
         {
+            // Check if this is a unique constraint violation (race condition)
+            // PostgreSQL error code 23505 = unique_violation
+            // Check the message for duplicate key or unique constraint violations
+            var message = ex.Message ?? string.Empty;
+            if (message.Contains("23505") || message.Contains("duplicate key") || 
+                message.Contains("unique constraint") || message.Contains("already exists"))
+            {
+                _logger.LogWarning("Unique constraint violation while creating agent session for user {UserId} and mentorship {MentorshipId}. This may indicate a race condition. Attempting to retrieve existing session.", 
+                    session.UserId, session.MentorshipId);
+                
+                // Try to get the existing session (another request may have created it)
+                var existingSession = await GetActiveAgentSessionAsync(session.UserId, session.MentorshipId);
+                if (existingSession != null)
+                {
+                    _logger.LogInformation("Retrieved existing agent session {SessionId} after unique constraint violation", existingSession.Id);
+                    return existingSession;
+                }
+                
+                // If we can't find it, rethrow as the original exception
+                _logger.LogError("Unique constraint violation but could not retrieve existing session");
+                throw new InvalidOperationException("Active session already exists for this user and mentorship", ex);
+            }
+            
             _logger.LogError(ex, "Postgrest error while creating agent session");
             throw new InvalidOperationException($"Failed to create agent session: {ex.Message}", ex);
         }

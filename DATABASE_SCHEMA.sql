@@ -1,6 +1,10 @@
 -- ============================================
 -- MENTORAGENTE DATABASE SCHEMA
 -- Database: Mentoragente (Supabase PostgreSQL)
+-- Last Updated: 2025-01-15
+-- 
+-- IMPORTANT: This schema includes all migrations up to date.
+-- For existing databases, use the migration files in docs/migrations/
 -- ============================================
 
 -- ============================================
@@ -18,6 +22,9 @@ CREATE TYPE ai_provider AS ENUM ('OpenAI');
 
 -- Mentorship Status
 CREATE TYPE mentorship_status AS ENUM ('Active', 'Inactive', 'Archived');
+
+-- WhatsApp Provider
+CREATE TYPE whatsapp_provider AS ENUM ('EvolutionAPI', 'ZApi', 'OfficialWhatsApp');
 
 -- ============================================
 -- TABLES
@@ -43,8 +50,9 @@ CREATE TABLE mentorships (
     duration_days INT NOT NULL,  -- 30, 60, 90, etc.
     description TEXT NULL,
     status mentorship_status NOT NULL DEFAULT 'Active',
-    evolution_api_key VARCHAR NOT NULL DEFAULT '',
-    evolution_instance_name VARCHAR NOT NULL DEFAULT '',
+    whatsapp_provider whatsapp_provider NOT NULL DEFAULT 'ZApi',
+    instance_code VARCHAR NOT NULL,  -- WhatsApp instance code (Z-API instance code or Evolution instance name)
+    instance_token VARCHAR NULL,  -- Provider-specific instance token (e.g., Z-API instance token)
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -102,6 +110,9 @@ CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_mentorships_mentor_id ON mentorships(mentor_id);
 CREATE INDEX idx_mentorships_status ON mentorships(status);
 CREATE INDEX idx_mentorships_assistant_id ON mentorships(assistant_id);
+CREATE INDEX idx_mentorships_whatsapp_provider ON mentorships(whatsapp_provider);
+CREATE INDEX idx_mentorships_instance_code ON mentorships(instance_code);
+CREATE INDEX idx_mentorships_instance_token ON mentorships(instance_token) WHERE instance_token IS NOT NULL;
 
 -- Agent Sessions indexes
 CREATE INDEX idx_agent_sessions_user_id ON agent_sessions(user_id);
@@ -268,8 +279,9 @@ COMMENT ON TABLE conversations IS 'Message history per session';
 
 COMMENT ON COLUMN users.phone_number IS 'Unique identifier, digits only (no +)';
 COMMENT ON COLUMN mentorships.assistant_id IS 'OpenAI Assistant ID';
-COMMENT ON COLUMN mentorships.evolution_api_key IS 'Evolution API key for this mentorship';
-COMMENT ON COLUMN mentorships.evolution_instance_name IS 'Evolution API instance name for this mentorship';
+COMMENT ON COLUMN mentorships.whatsapp_provider IS 'WhatsApp provider type: ZApi, EvolutionAPI, or OfficialWhatsApp';
+COMMENT ON COLUMN mentorships.instance_code IS 'WhatsApp instance code (Z-API instance code or Evolution instance name)';
+COMMENT ON COLUMN mentorships.instance_token IS 'Provider-specific instance token (e.g., Z-API instance token). Required for Z-API, optional for other providers.';
 COMMENT ON COLUMN agent_sessions.ai_context_id IS 'OpenAI Thread ID (persists indefinitely)';
 COMMENT ON COLUMN agent_session_data.custom_properties_json IS 'Future custom properties (JSONB)';
 
@@ -284,15 +296,16 @@ INSERT INTO users (phone_number, name, email, status)
 VALUES ('5511999999999', 'Paula', 'paula@example.com', 'Active');
 
 -- Sample mentorship
-INSERT INTO mentorships (name, mentor_id, assistant_id, duration_days, description, evolution_api_key, evolution_instance_name)
+INSERT INTO mentorships (name, mentor_id, assistant_id, duration_days, description, whatsapp_provider, instance_code, instance_token)
 VALUES (
     'Nina - Mentorship Offer Discovery',
     (SELECT id FROM users WHERE phone_number = '5511999999999'),
     'asst_YOUR_ASSISTANT_ID_HERE',
     30,
     '30-day program to discover your unique mentorship offer',
-    'YOUR_EVOLUTION_API_KEY',
-    'YOUR_INSTANCE_NAME'
+    'ZApi',
+    'YOUR_INSTANCE_CODE',
+    'YOUR_INSTANCE_TOKEN'  -- Optional, required for Z-API
 );
 */
 

@@ -12,6 +12,7 @@ public interface IAgentSessionRepository
     Task<AgentSessionWithData?> GetAgentSessionWithDataAsync(Guid userId, Guid mentorshipId);
     Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId);
     Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId, int skip, int take);
+    Task<List<AgentSession>> GetActiveAgentSessionsByUserIdAsync(Guid userId);
     Task<int> GetAgentSessionsCountByUserIdAsync(Guid userId);
     Task<AgentSession> CreateAgentSessionAsync(AgentSession session);
     Task<AgentSession> UpdateAgentSessionAsync(AgentSession session);

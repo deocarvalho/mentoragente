@@ -1,0 +1,167 @@
+name: 🧪 Tests
+
+# Quando executar os testes
+on:
+  # Executar em cada push para development e main
+  push:
+    branches: [development, main]
+  
+  # Executar em cada Pull Request para main
+  pull_request:
+    branches: [main]
+  
+  # Permitir executar manualmente (opcional)
+  workflow_dispatch:
+
+jobs:
+  # Job 1: Testes com Mocks (rápidos)
+  test-mocks:
+    name: Testes com Mocks
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Baixar o código
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      # 2. Configurar .NET 8.0
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      # 3. Restaurar dependências
+      - name: 📦 Restaurar pacotes
+        run: dotnet restore
+      
+      # 4. Compilar
+      - name: 🔨 Compilar
+        run: dotnet build --no-incremental
+      
+      # 5. Executar testes com mocks (rápidos)
+      - name: 🧪 Executar testes com Mocks
+        run: |
+          dotnet test \
+            --filter "Category!=E2E&Category!=Smoke" \
+            --no-build \
+            --verbosity normal \
+            --collect:"XPlat Code Coverage" \
+            --results-directory:"${{ runner.temp }}/test-results"
+      
+      # 6. Publicar resultados de cobertura (opcional)
+      - name: 📊 Publicar cobertura de código
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ${{ runner.temp }}/test-results/**/coverage.cobertura.xml
+          fail_ci_if_error: false
+
+  # Job 2: Testes E2E (banco real)
+  test-e2e:
+    name: Testes E2E (TestContainers)
+    runs-on: ubuntu-latest
+    
+    # Docker é necessário para TestContainers
+    services:
+      docker:
+        image: docker:24-dind
+        options: --privileged
+    
+    steps:
+      # 1. Baixar o código
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      # 2. Configurar .NET 8.0
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      # 3. Iniciar Docker
+      - name: 🐳 Iniciar Docker
+        run: |
+          sudo systemctl start docker || true
+          docker ps
+      
+      # 4. Restaurar dependências
+      - name: 📦 Restaurar pacotes
+        run: dotnet restore
+      
+      # 5. Compilar
+      - name: 🔨 Compilar
+        run: dotnet build --no-incremental
+      
+      # 6. Executar testes E2E
+      - name: 🧪 Executar testes E2E
+        run: |
+          dotnet test \
+            --filter "Category=E2E" \
+            --no-build \
+            --verbosity normal
+
+  # Job 3: Smoke Tests (apenas em main, após deploy)
+  smoke-tests:
+    name: Smoke Tests (Pós-Deploy)
+    runs-on: ubuntu-latest
+    
+    # Só executar em main (produção) e se SMOKE_TEST_URL estiver configurado
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    
+    steps:
+      # 1. Baixar o código
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      # 2. Configurar .NET 8.0
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      # 3. Restaurar dependências
+      - name: 📦 Restaurar pacotes
+        run: dotnet restore
+      
+      # 4. Compilar
+      - name: 🔨 Compilar
+        run: dotnet build --no-incremental
+      
+      # 5. Executar smoke tests
+      - name: 💨 Executar Smoke Tests
+        env:
+          SMOKE_TEST_URL: ${{ secrets.SMOKE_TEST_URL }}
+        run: |
+          if [ -z "$SMOKE_TEST_URL" ]; then
+            echo "⚠️ SMOKE_TEST_URL não configurado. Pulando smoke tests."
+            exit 0
+          fi
+          
+          dotnet test \
+            --filter "Category=Smoke" \
+            --no-build \
+            --verbosity normal
+
+  # Job 4: Resumo final (sempre executa)
+  test-summary:
+    name: 📊 Resumo dos Testes
+    runs-on: ubuntu-latest
+    needs: [test-mocks, test-e2e]
+    if: always()
+    
+    steps:
+      - name: ✅ Resumo
+        run: |
+          echo "## 🧪 Resultado dos Testes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Teste | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Testes com Mocks | ${{ needs.test-mocks.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Testes E2E | ${{ needs.test-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.test-mocks.result }}" == "success" ] && [ "${{ needs.test-e2e.result }}" == "success" ]; then
+            echo "✅ Todos os testes passaram!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Alguns testes falharam!" >> $GITHUB_STEP_SUMMARY
+          fi
+

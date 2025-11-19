@@ -1,11 +1,12 @@
 using FluentAssertions;
 using Xunit;
 using Moq;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Entities;
 using Mentoragente.Domain.Enums;
-using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Tests.Application.Services;
 
@@ -19,6 +20,9 @@ public class MessageProcessorAdditionalTests
     private readonly Mock<IOpenAIAssistantService> _mockOpenAIAssistantService;
     private readonly Mock<IWhatsAppServiceFactory> _mockWhatsAppServiceFactory;
     private readonly Mock<ISessionUpdateService> _mockSessionUpdateService;
+    private readonly Mock<IPhoneNumberValidator> _mockPhoneNumberValidator;
+    private readonly Mock<IInputSanitizer> _mockInputSanitizer;
+    private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<ILogger<MessageProcessor>> _mockLogger;
     private readonly MessageProcessor _messageProcessor;
 
@@ -32,7 +36,14 @@ public class MessageProcessorAdditionalTests
         _mockOpenAIAssistantService = new Mock<IOpenAIAssistantService>();
         _mockWhatsAppServiceFactory = new Mock<IWhatsAppServiceFactory>();
         _mockSessionUpdateService = new Mock<ISessionUpdateService>();
+        _mockPhoneNumberValidator = new Mock<IPhoneNumberValidator>();
+        _mockInputSanitizer = new Mock<IInputSanitizer>();
+        _mockConfiguration = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger<MessageProcessor>>();
+        
+        // Setup default mocks
+        _mockPhoneNumberValidator.Setup(x => x.IsValidPhoneNumber(It.IsAny<string>())).Returns(true);
+        _mockInputSanitizer.Setup(x => x.SanitizeMessage(It.IsAny<string>())).Returns<string>(s => s);
         
         _messageProcessor = new MessageProcessor(
             _mockUserOrchestrationService.Object,
@@ -43,6 +54,9 @@ public class MessageProcessorAdditionalTests
             _mockOpenAIAssistantService.Object,
             _mockWhatsAppServiceFactory.Object,
             _mockSessionUpdateService.Object,
+            _mockPhoneNumberValidator.Object,
+            _mockInputSanitizer.Object,
+            _mockConfiguration.Object,
             _mockLogger.Object);
     }
 
@@ -113,7 +127,7 @@ public class MessageProcessorAdditionalTests
         _mockMentorshipCacheService.Setup(x => x.GetMentorshipAsync(mentorshipId))
             .ReturnsAsync(mentorship);
 
-        _mockSessionOrchestrationService.Setup(x => x.GetOrCreateSessionContextAsync(userId, mentorshipId, mentorship.DurationDays))
+        _mockSessionOrchestrationService.Setup(x => x.GetSessionContextAsync(userId, mentorshipId))
             .ReturnsAsync(sessionContext);
 
         _mockAccessValidationService.Setup(x => x.ValidateAccessAsync(agentSession, sessionData))
@@ -180,7 +194,7 @@ public class MessageProcessorAdditionalTests
         _mockMentorshipCacheService.Setup(x => x.GetMentorshipAsync(mentorshipId))
             .ReturnsAsync(mentorship);
 
-        _mockSessionOrchestrationService.Setup(x => x.GetOrCreateSessionContextAsync(userId, mentorshipId, mentorship.DurationDays))
+        _mockSessionOrchestrationService.Setup(x => x.GetSessionContextAsync(userId, mentorshipId))
             .ReturnsAsync(sessionContext);
 
         _mockAccessValidationService.Setup(x => x.ValidateAccessAsync(agentSession, sessionData))

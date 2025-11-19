@@ -8,7 +8,7 @@ namespace Mentoragente.Application.Services;
 
 public interface IAgentSessionOrchestrationService
 {
-    Task<AgentSessionContext> GetOrCreateSessionContextAsync(Guid userId, Guid mentorshipId, int durationDays);
+    Task<AgentSessionContext> GetSessionContextAsync(Guid userId, Guid mentorshipId);
     Task EnsureThreadExistsAsync(AgentSession session);
 }
 
@@ -37,13 +37,15 @@ public class AgentSessionOrchestrationService : IAgentSessionOrchestrationServic
         _logger = logger;
     }
 
-    public async Task<AgentSessionContext> GetOrCreateSessionContextAsync(Guid userId, Guid mentorshipId, int durationDays)
+    public async Task<AgentSessionContext> GetSessionContextAsync(Guid userId, Guid mentorshipId)
     {
         var existingContext = await GetExistingSessionContextAsync(userId, mentorshipId);
         if (existingContext != null)
             return existingContext;
 
-        return await CreateNewSessionContextAsync(userId, mentorshipId, durationDays);
+        // NÃO criar sessão automaticamente - sessões só são criadas pelo enrollment
+        _logger.LogWarning("No session found for user {UserId} and mentorship {MentorshipId} - user not enrolled", userId, mentorshipId);
+        throw new InvalidOperationException("Session not found - user not enrolled");
     }
 
     private async Task<AgentSessionContext?> GetExistingSessionContextAsync(Guid userId, Guid mentorshipId)
@@ -61,16 +63,26 @@ public class AgentSessionOrchestrationService : IAgentSessionOrchestrationServic
 
     private async Task<AgentSessionContext?> HandleExistingInactiveSessionAsync(AgentSession session, AgentSessionData data)
     {
+        // Garantir que sessões expiradas não sejam reativadas (Segurança #6)
         if (DateTime.UtcNow > data.AccessEndDate)
         {
             session.Status = AgentSessionStatus.Expired;
             await _agentSessionRepository.UpdateAgentSessionAsync(session);
-            _logger.LogWarning("Access expired for session {SessionId}", session.Id);
+            _logger.LogWarning("Access expired for session {SessionId} - cannot reactivate", session.Id);
+            throw new InvalidOperationException("Access expired");
+        }
+
+        // Só reativa se ainda estiver dentro do período de acesso
+        if (session.Status == AgentSessionStatus.Expired)
+        {
+            _logger.LogWarning("Attempted to reactivate expired session {SessionId} - access ended on {AccessEndDate}", 
+                session.Id, data.AccessEndDate);
             throw new InvalidOperationException("Access expired");
         }
 
         session.Status = AgentSessionStatus.Active;
         session = await _agentSessionRepository.UpdateAgentSessionAsync(session);
+        _logger.LogInformation("Reactivated session {SessionId} for user {UserId}", session.Id, session.UserId);
         return new AgentSessionContext { Session = session, Data = data };
     }
 

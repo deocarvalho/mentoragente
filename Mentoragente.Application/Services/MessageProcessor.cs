@@ -1,5 +1,7 @@
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Entities;
+using Mentoragente.Domain.Enums;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Mentoragente.Application.Services;
@@ -26,7 +28,11 @@ public class MessageProcessor : IMessageProcessor
     private readonly IOpenAIAssistantService _openAIAssistantService;
     private readonly IWhatsAppServiceFactory _whatsAppServiceFactory;
     private readonly ISessionUpdateService _sessionUpdateService;
+    private readonly IPhoneNumberValidator _phoneNumberValidator;
+    private readonly IInputSanitizer _inputSanitizer;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<MessageProcessor> _logger;
+    private const string DefaultUnauthorizedMessage = "Sinto muito, mas este número de telefone não tem acesso a este contato. Se você acredita que houve um engano, por favor, entre em contato com a pessoa gestora do seu contrato.";
 
     public MessageProcessor(
         IUserOrchestrationService userOrchestrationService,
@@ -37,6 +43,9 @@ public class MessageProcessor : IMessageProcessor
         IOpenAIAssistantService openAIAssistantService,
         IWhatsAppServiceFactory whatsAppServiceFactory,
         ISessionUpdateService sessionUpdateService,
+        IPhoneNumberValidator phoneNumberValidator,
+        IInputSanitizer inputSanitizer,
+        IConfiguration configuration,
         ILogger<MessageProcessor> logger)
     {
         _userOrchestrationService = userOrchestrationService;
@@ -47,25 +56,28 @@ public class MessageProcessor : IMessageProcessor
         _openAIAssistantService = openAIAssistantService;
         _whatsAppServiceFactory = whatsAppServiceFactory;
         _sessionUpdateService = sessionUpdateService;
+        _phoneNumberValidator = phoneNumberValidator;
+        _inputSanitizer = inputSanitizer;
+        _configuration = configuration;
         _logger = logger;
     }
 
     public async Task<MessageProcessingResult> ProcessMessageAsync(string phoneNumber, string messageText, Guid mentorshipId)
     {
+        // Validação de número de telefone
+        if (!_phoneNumberValidator.IsValidPhoneNumber(phoneNumber))
+        {
+            _logger.LogWarning("Invalid phone number format: {PhoneNumber}", phoneNumber);
+            return await CreateUnauthorizedResponseAsync(mentorshipId);
+        }
+
+        // Sanitização de entrada
+        messageText = _inputSanitizer.SanitizeMessage(messageText);
+
         if (string.IsNullOrWhiteSpace(messageText))
         {
             _logger.LogWarning("Received empty message from {PhoneNumber}", phoneNumber);
-            var mentorship = await _mentorshipCacheService.GetMentorshipAsync(mentorshipId);
-            if (mentorship == null)
-            {
-                _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
-                throw new InvalidOperationException($"Mentorship {mentorshipId} not found");
-            }
-            return new MessageProcessingResult
-            {
-                Response = "Sorry, I couldn't understand your message. Please send a message with text.",
-                Mentorship = mentorship
-            };
+            return await CreateEmptyMessageResponseAsync(mentorshipId);
         }
 
         _logger.LogInformation("Processing message from {PhoneNumber} for mentorship {MentorshipId}: {Message}", 
@@ -101,17 +113,15 @@ public class MessageProcessor : IMessageProcessor
         }
         catch (InvalidOperationException ex) when (ex.Message == "Access expired")
         {
-            var mentorship = await _mentorshipCacheService.GetMentorshipAsync(mentorshipId);
-            if (mentorship == null)
-            {
-                _logger.LogError("Mentorship {MentorshipId} not found", mentorshipId);
-                throw new InvalidOperationException($"Mentorship {mentorshipId} not found");
-            }
-            return new MessageProcessingResult
-            {
-                Response = "Your access period to this mentorship has ended. Please contact to renew.",
-                Mentorship = mentorship
-            };
+            return await CreateAccessExpiredResponseAsync(mentorshipId);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Session not found") || ex.Message.Contains("User not found"))
+        {
+            // Logging de tentativas não autorizadas (Segurança #3)
+            _logger.LogWarning("Unauthorized access attempt - {Reason} - Phone: {PhoneNumber}, MentorshipId: {MentorshipId}", 
+                ex.Message, phoneNumber, mentorshipId);
+            
+            return await CreateUnauthorizedResponseAsync(mentorshipId);
         }
         catch (Exception ex)
         {
@@ -122,17 +132,25 @@ public class MessageProcessor : IMessageProcessor
 
     private async Task<ProcessingContext> LoadProcessingContextAsync(string phoneNumber, Guid mentorshipId)
     {
-        // Parallelize user and mentorship loading for better performance
-        var userTask = _userOrchestrationService.GetOrCreateUserAsync(phoneNumber);
-        var mentorshipTask = GetMentorshipOrThrowAsync(mentorshipId);
+        // Buscar usuário (NÃO criar) - usuários só são criados pelo enrollment
+        var user = await _userOrchestrationService.GetUserAsync(phoneNumber);
+        if (user == null)
+        {
+            _logger.LogWarning("User not found for phone {PhoneNumber}", phoneNumber);
+            throw new InvalidOperationException("User not found");
+        }
+
+        // Validar mentorship existe e está ativo (Segurança #4)
+        var mentorship = await GetMentorshipOrThrowAsync(mentorshipId);
+        if (mentorship.Status != MentorshipStatus.Active)
+        {
+            _logger.LogWarning("Mentorship {MentorshipId} is not active (Status: {Status})", mentorshipId, mentorship.Status);
+            throw new InvalidOperationException($"Mentorship {mentorshipId} is not active");
+        }
         
-        await Task.WhenAll(userTask, mentorshipTask);
-        
-        var user = await userTask;
-        var mentorship = await mentorshipTask;
-        
-        var sessionContext = await _sessionOrchestrationService.GetOrCreateSessionContextAsync(
-            user.Id, mentorshipId, mentorship.DurationDays);
+        // Buscar sessão (NÃO criar) - sessões só são criadas pelo enrollment
+        var sessionContext = await _sessionOrchestrationService.GetSessionContextAsync(
+            user.Id, mentorshipId);
 
         return new ProcessingContext
         {
@@ -156,7 +174,9 @@ public class MessageProcessor : IMessageProcessor
 
     private async Task<string> ProcessWithAIAsync(ProcessingContext context, string messageText, string assistantId)
     {
-        await _openAIAssistantService.AddUserMessageAsync(context.Session.AIContextId!, messageText);
+        // Sanitizar mensagem antes de enviar para IA
+        var sanitizedMessage = _inputSanitizer.SanitizeMessage(messageText);
+        await _openAIAssistantService.AddUserMessageAsync(context.Session.AIContextId!, sanitizedMessage);
         return await _openAIAssistantService.RunAssistantAsync(context.Session.AIContextId!, assistantId);
     }
 
@@ -193,8 +213,8 @@ public class MessageProcessor : IMessageProcessor
 
             await _sessionOrchestrationService.EnsureThreadExistsAsync(context.Session);
 
-            var startPrompt = $"Ol�! Me chamo {displayName} e estou come�ando agora em {context.Mentorship.Name}! " + 
-                "Me d� as boas vindas e explique resumidamente o que vamos fazer aqui.";
+            var startPrompt = $"Olá! Me chamo {displayName} e estou começando agora em {context.Mentorship.Name}! " + 
+                "Me dá as boas vindas e explique resumidamente o que vamos fazer aqui.";
 
             var welcomeMessage = await ProcessWithAIAsync(context, startPrompt, context.Mentorship.AssistantId);
 
@@ -230,6 +250,23 @@ public class MessageProcessor : IMessageProcessor
         return existingMessages.Any(m => m.Role == "assistant");
     }
 
-    private static string BuildWelcomePrompt(string userName, Mentorship mentorship, string startMessage) => startMessage;
+    private async Task<MessageProcessingResult> CreateUnauthorizedResponseAsync(Guid mentorshipId) =>
+    await CreateMentorshipExceptionResponseAsync(mentorshipId, _configuration["Messages:UnauthorizedAccess"] ?? DefaultUnauthorizedMessage);
+
+    private async Task<MessageProcessingResult> CreateAccessExpiredResponseAsync(Guid mentorshipId) => 
+    await CreateMentorshipExceptionResponseAsync(mentorshipId, "Your access period to this mentorship has ended. Please contact to renew.");
+
+    private async Task<MessageProcessingResult> CreateEmptyMessageResponseAsync(Guid mentorshipId) =>
+    await CreateMentorshipExceptionResponseAsync(mentorshipId, "Sorry, I couldn't understand your message. Please send a message with text.");
+
+    private async Task<MessageProcessingResult> CreateMentorshipExceptionResponseAsync(Guid mentorshipId, string message)
+    {
+        var mentorship = await GetMentorshipOrThrowAsync(mentorshipId);
+        return new MessageProcessingResult
+        {
+            Response = message,
+            Mentorship = mentorship
+        };
+    }
 }
 

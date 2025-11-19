@@ -5,6 +5,7 @@ using Mentoragente.Infrastructure.Services;
 using Mentoragente.Infrastructure.Repositories;
 using FluentValidation;
 using Mentoragente.API.Configuration;
+using System.Threading.RateLimiting;
 
 namespace Mentoragente.API;
 
@@ -40,11 +41,116 @@ public class Program
             {
                 c.IncludeXmlComments(xmlPath);
             }
+
+            // Add Client-Token security definition for Z-API webhooks
+            c.AddSecurityDefinition("Client-Token", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Description = "Z-API Client-Token for webhook authentication. Required for Z-API webhook endpoints. Get this token from your Z-API account settings.",
+                Name = "Client-Token",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey
+            });
+
+            // Add API Key security definition for administrative endpoints
+            c.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Description = "API Key for administrative endpoints. Get this key from appsettings.json (ApiKey).",
+                Name = "X-API-Key",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey
+            });
+
+            // Add operation filter to apply Client-Token security only to Z-API webhook endpoints
+            c.OperationFilter<Filters.ZApiWebhookSecurityFilter>();
+            
+            // Add operation filter to apply API Key security to all endpoints with [Authorize]
+            c.OperationFilter<Filters.ApiKeySecurityFilter>();
+            
+            // Enable Swagger annotations
+            c.EnableAnnotations();
         });
-        builder.Services.AddHealthChecks();
+        // Add comprehensive health checks
+        builder.Services.AddMentoragenteHealthChecks(builder.Configuration);
 
         // Add memory cache for mentorship caching
         builder.Services.AddMemoryCache();
+
+        // Configure CORS
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+            ?? Array.Empty<string>();
+        
+        builder.Services.AddCors(options =>
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                // Development: Allow all origins for easier development
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            }
+            else
+            {
+                // Production: Restrict to specific origins
+                if (allowedOrigins.Length > 0)
+                {
+                    options.AddDefaultPolicy(policy =>
+                    {
+                        policy.WithOrigins(allowedOrigins)
+                              .AllowAnyMethod()
+                              .AllowAnyHeader()
+                              .AllowCredentials();
+                    });
+                }
+                else
+                {
+                    // If no origins configured, deny all (most secure)
+                    options.AddDefaultPolicy(policy =>
+                    {
+                        policy.AllowAnyMethod()
+                              .AllowAnyHeader();
+                        // No origins allowed = CORS will block all cross-origin requests
+                    });
+                }
+            }
+        });
+
+        // Rate Limiting
+        builder.Services.AddRateLimiter(options =>
+        {
+            // Webhooks: 500 req/min per IP
+            options.AddPolicy("WebhookPolicy", context =>
+            {
+                var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: ipAddress,
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 500,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
+            });
+
+            // Administrative endpoints: 10 req/min per API Key
+            options.AddPolicy("AdminPolicy", context =>
+            {
+                // Extract API Key from header
+                var apiKey = context.Request.Headers["X-API-Key"].FirstOrDefault() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: apiKey,
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
+            });
+        });
 
         // FluentValidation - using DependencyInjectionExtensions (FluentValidation.AspNetCore is deprecated)
         builder.Services.AddValidatorsFromAssemblyContaining<Application.Validators.CreateUserRequestValidator>();
@@ -64,6 +170,9 @@ public class Program
         builder.Services.AddScoped<IMentorshipService, MentorshipService>();
         builder.Services.AddScoped<IAgentSessionService, AgentSessionService>();
         builder.Services.AddScoped<IMentorshipCacheService, MentorshipCacheService>();
+        builder.Services.AddScoped<IPhoneNumberValidator, PhoneNumberValidator>();
+        builder.Services.AddScoped<IInputSanitizer, InputSanitizer>();
+        builder.Services.AddScoped<ILogSanitizer, LogSanitizer>();
 
         // Register Infrastructure Layer services with retry policies
         builder.Services.AddHttpClient<IOpenAIAssistantService, OpenAIAssistantService>()
@@ -99,25 +208,67 @@ public class Program
         logger.LogInformation("🔧 Environment: {Environment}", app.Environment.EnvironmentName);
 
         // Configure the HTTP request pipeline
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        // Swagger only in Development and Staging environments
+        if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Staging")
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Mentoragente API v1");
+                c.RoutePrefix = "swagger";
+            });
+        }
 
-        // Health check endpoint
-        app.MapHealthChecks("/health");
+        // Health check endpoints
+        // /health/live - Liveness probe (just checks if the app is running)
+        app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = _ => false, // Don't run any checks, just return healthy if app is running
+            ResponseWriter = WriteHealthCheckResponse
+        });
+
+        // /health/ready - Readiness probe (checks all dependencies)
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready"), // Only run checks tagged with "ready"
+            ResponseWriter = WriteHealthCheckResponse
+        });
+
+        // /health - Overall health (all checks)
+        app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthCheckResponse
+        });
         
         // Root endpoint for Render health checks
-        app.MapGet("/", () => new { 
-            status = "ok", 
-            service = "Mentoragente API",
-            version = "1.0.0",
-            environment = app.Environment.EnvironmentName,
-            timestamp = DateTime.UtcNow,
-            endpoints = new {
-                health = "/health",
-                swagger = "/swagger",
-                api = "/api"
+        app.MapGet("/", () => 
+        {
+            var endpoints = new Dictionary<string, string>
+            {
+                { "health", "/health" },
+                { "health_live", "/health/live" },
+                { "health_ready", "/health/ready" },
+                { "api", "/api" }
+            };
+
+            // Only include swagger endpoint in Development/Staging
+            if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Staging")
+            {
+                endpoints.Add("swagger", "/swagger");
             }
+
+            return new { 
+                status = "ok", 
+                service = "Mentoragente API",
+                version = "1.0.0",
+                environment = app.Environment.EnvironmentName,
+                timestamp = DateTime.UtcNow,
+                endpoints = endpoints
+            };
         });
+
+        // CORS must be before UseAuthentication and UseAuthorization
+        app.UseCors();
 
         // Disable HTTPS redirection for Render/cloud deployment
         // app.UseHttpsRedirection();
@@ -125,11 +276,46 @@ public class Program
         // Global exception handling middleware (must be early in pipeline)
         app.UseMiddleware<Middleware.GlobalExceptionHandlingMiddleware>();
 
+        // Phone number rate limiting middleware (for enrollment endpoints)
+        app.UseMiddleware<Middleware.PhoneNumberRateLimitMiddleware>();
+
+        // Enable rate limiting
+        app.UseRateLimiter();
+
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
 
         app.Run();
+    }
+
+    private static async Task WriteHealthCheckResponse(
+        Microsoft.AspNetCore.Http.HttpContext context,
+        Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        
+        var result = new
+        {
+            status = report.Status.ToString(),
+            totalDuration = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(entry => new
+            {
+                name = entry.Key,
+                status = entry.Value.Status.ToString(),
+                description = entry.Value.Description,
+                duration = entry.Value.Duration.TotalMilliseconds,
+                exception = entry.Value.Exception?.Message,
+                data = entry.Value.Data
+            })
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(result, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        await context.Response.WriteAsync(json);
     }
 }
 

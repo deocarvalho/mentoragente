@@ -8,6 +8,7 @@ namespace Mentoragente.Application.Services;
 public interface IUserOrchestrationService
 {
     Task<User> GetOrCreateUserAsync(string phoneNumber);
+    Task<User?> GetUserAsync(string phoneNumber);
 }
 
 public class UserOrchestrationService : IUserOrchestrationService
@@ -41,6 +42,11 @@ public class UserOrchestrationService : IUserOrchestrationService
         _logger.LogInformation("Created new user {UserId} for phone {PhoneNumber}", user.Id, phoneNumber);
         
         return user;
+    }
+
+    public async Task<User?> GetUserAsync(string phoneNumber)
+    {
+        return await _userRepository.GetUserByPhoneAsync(phoneNumber);
     }
 }
 

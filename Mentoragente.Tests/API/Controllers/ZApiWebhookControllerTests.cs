@@ -3,6 +3,7 @@ using Xunit;
 using Moq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Mentoragente.API.Controllers;
 using Mentoragente.Application.Adapters;
 using Mentoragente.Application.Services;
@@ -18,7 +19,12 @@ public class ZApiWebhookControllerTests
     private readonly Mock<IMessageProcessor> _mockMessageProcessor;
     private readonly Mock<IWhatsAppServiceFactory> _mockWhatsAppServiceFactory;
     private readonly Mock<IZApiWebhookAdapter> _mockAdapter;
+    private readonly Mock<IUserOrchestrationService> _mockUserOrchestrationService;
+    private readonly Mock<IAgentSessionService> _mockAgentSessionService;
+    private readonly Mock<IMentorshipCacheService> _mockMentorshipCacheService;
+    private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<ILogger<ZApiWebhookController>> _mockLogger;
+    private readonly Mock<ILogSanitizer> _mockLogSanitizer;
     private readonly ZApiWebhookController _controller;
 
     public ZApiWebhookControllerTests()
@@ -26,13 +32,29 @@ public class ZApiWebhookControllerTests
         _mockMessageProcessor = new Mock<IMessageProcessor>();
         _mockWhatsAppServiceFactory = new Mock<IWhatsAppServiceFactory>();
         _mockAdapter = new Mock<IZApiWebhookAdapter>();
+        _mockUserOrchestrationService = new Mock<IUserOrchestrationService>();
+        _mockAgentSessionService = new Mock<IAgentSessionService>();
+        _mockMentorshipCacheService = new Mock<IMentorshipCacheService>();
+        _mockConfiguration = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger<ZApiWebhookController>>();
+        _mockLogSanitizer = new Mock<ILogSanitizer>();
+        
+        // Setup default log sanitizer behavior (return input as-is for tests)
+        _mockLogSanitizer.Setup(x => x.MaskPhoneNumber(It.IsAny<string>())).Returns<string?>(s => s ?? "***");
+        _mockLogSanitizer.Setup(x => x.MaskToken(It.IsAny<string>())).Returns<string?>(s => s ?? "***");
+        _mockLogSanitizer.Setup(x => x.SanitizeMessageText(It.IsAny<string>(), It.IsAny<int>())).Returns<string?, int>((s, _) => s ?? "***");
+        _mockLogSanitizer.Setup(x => x.SanitizeJsonPayload(It.IsAny<string>())).Returns<string?>(s => s ?? "{}");
 
         _controller = new ZApiWebhookController(
             _mockMessageProcessor.Object,
             _mockWhatsAppServiceFactory.Object,
             _mockAdapter.Object,
-            _mockLogger.Object);
+            _mockUserOrchestrationService.Object,
+            _mockAgentSessionService.Object,
+            _mockMentorshipCacheService.Object,
+            _mockConfiguration.Object,
+            _mockLogger.Object,
+            _mockLogSanitizer.Object);
     }
 
     [Fact]

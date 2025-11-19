@@ -13,6 +13,7 @@ public interface IAgentSessionService
     Task<List<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId);
     Task<PagedResult<AgentSession>> GetAgentSessionsByUserIdAsync(Guid userId, int page = 1, int pageSize = 10);
     Task<AgentSession?> GetActiveAgentSessionAsync(Guid userId, Guid mentorshipId);
+    Task<Guid?> AutoDetectMentorshipIdAsync(Guid userId);
     Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentorshipId, string? aiContextId = null);
     Task<AgentSession> UpdateAgentSessionAsync(
         Guid id,
@@ -79,6 +80,30 @@ public class AgentSessionService : IAgentSessionService
         return await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentorshipId);
     }
 
+    /// <summary>
+    /// Auto-detects the most appropriate active mentorship for a user based on their active sessions.
+    /// Returns the mentorship ID of the most recently interacted session, or null if no active sessions exist.
+    /// </summary>
+    public async Task<Guid?> AutoDetectMentorshipIdAsync(Guid userId)
+    {
+        _logger.LogInformation("Auto-detecting mentorship for user {UserId}", userId);
+        var activeSessions = await _agentSessionRepository.GetActiveAgentSessionsByUserIdAsync(userId);
+        
+        if (activeSessions.Count == 0)
+        {
+            _logger.LogWarning("No active sessions found for user {UserId} - user may not be enrolled", userId);
+            return null;
+        }
+
+        // Sessions are already ordered by LastInteraction DESC from repository
+        // Return the most recently interacted session's mentorship
+        var mostRecentSession = activeSessions.First();
+        _logger.LogInformation("Auto-detected mentorship {MentorshipId} for user {UserId} (most recent interaction: {LastInteraction})", 
+            mostRecentSession.MentorshipId, userId, mostRecentSession.LastInteraction);
+        
+        return mostRecentSession.MentorshipId;
+    }
+
     public async Task<AgentSession> CreateAgentSessionAsync(Guid userId, Guid mentorshipId, string? aiContextId = null)
     {
         // Validate user exists
@@ -97,7 +122,9 @@ public class AgentSessionService : IAgentSessionService
             throw new InvalidOperationException($"Mentorship with ID {mentorshipId} not found");
         }
 
-        // Check if active session already exists
+        // Check if active session already exists (optimistic check to avoid unnecessary DB operations)
+        // Note: This check doesn't prevent race conditions, but the database unique constraint will.
+        // The repository will handle unique constraint violations and return the existing session.
         var existingSession = await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentorshipId);
         if (existingSession != null)
         {
@@ -118,20 +145,61 @@ public class AgentSessionService : IAgentSessionService
         };
 
         _logger.LogInformation("Creating new agent session for user {UserId} and mentorship {MentorshipId}", userId, mentorshipId);
-        var createdSession = await _agentSessionRepository.CreateAgentSessionAsync(session);
-
-        // Create AgentSessionData
-        var sessionData = new AgentSessionData
+        
+        // Attempt to create session. If a race condition occurs (two requests simultaneously),
+        // the database unique constraint will prevent duplicates, and the repository will
+        // catch the PostgrestException, retrieve the existing session, and return it.
+        AgentSession createdSession;
+        try
         {
-            AgentSessionId = createdSession.Id,
-            AccessStartDate = DateTime.UtcNow,
-            AccessEndDate = DateTime.UtcNow.AddDays(mentorship.DurationDays),
-            ProgressPercentage = 0,
-            ReportGenerated = false
-        };
+            createdSession = await _agentSessionRepository.CreateAgentSessionAsync(session);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Active session already exists"))
+        {
+            // Repository detected unique constraint violation and couldn't retrieve existing session
+            // Try one more time to get it (in case it was just created)
+            var retrievedSession = await _agentSessionRepository.GetActiveAgentSessionAsync(userId, mentorshipId);
+            if (retrievedSession != null)
+            {
+                _logger.LogInformation("Retrieved existing session {SessionId} after race condition", retrievedSession.Id);
+                createdSession = retrievedSession;
+            }
+            else
+            {
+                throw;
+            }
+        }
 
-        await _agentSessionDataRepository.CreateAgentSessionDataAsync(sessionData);
-        _logger.LogInformation("Created agent session data for session {SessionId}", createdSession.Id);
+        // Create AgentSessionData (only if it doesn't exist - handles race conditions)
+        // Note: agent_session_id is the primary key, so duplicate inserts will fail
+        // We check if it exists first to avoid unnecessary exceptions
+        var existingData = await _agentSessionDataRepository.GetAgentSessionDataAsync(createdSession.Id);
+        if (existingData == null)
+        {
+            var sessionData = new AgentSessionData
+            {
+                AgentSessionId = createdSession.Id,
+                AccessStartDate = DateTime.UtcNow,
+                AccessEndDate = DateTime.UtcNow.AddDays(mentorship.DurationDays),
+                ProgressPercentage = 0,
+                ReportGenerated = false
+            };
+
+            try
+            {
+                await _agentSessionDataRepository.CreateAgentSessionDataAsync(sessionData);
+                _logger.LogInformation("Created agent session data for session {SessionId}", createdSession.Id);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists") || ex.Message.Contains("duplicate"))
+            {
+                // Race condition: another request created the data first
+                _logger.LogInformation("Agent session data already exists for session {SessionId} (race condition)", createdSession.Id);
+            }
+        }
+        else
+        {
+            _logger.LogInformation("Agent session data already exists for session {SessionId}", createdSession.Id);
+        }
 
         return createdSession;
     }

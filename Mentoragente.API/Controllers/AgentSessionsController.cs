@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Mentoragente.Application.Services;
 using Mentoragente.Domain.DTOs;
 using Mentoragente.Application.Mappings;
@@ -8,7 +10,8 @@ namespace Mentoragente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// [Authorize] // Uncomment to require API key authentication
+[Authorize]
+[EnableRateLimiting("AdminPolicy")]
 public class AgentSessionsController : ControllerBase
 {
     private readonly IAgentSessionService _agentSessionService;
