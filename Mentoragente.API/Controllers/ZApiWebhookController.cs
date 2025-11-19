@@ -5,6 +5,7 @@ using Mentoragente.Application.Services;
 using Mentoragente.Domain.Interfaces;
 using Mentoragente.Domain.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Swashbuckle.AspNetCore.Annotations;
@@ -28,6 +29,7 @@ public class ZApiWebhookController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<ZApiWebhookController> _logger;
     private readonly ILogSanitizer _logSanitizer;
+    private readonly IWebHostEnvironment _environment;
     private const string DefaultUnauthorizedMessage = "Sinto muito, mas este número de telefone não tem acesso a este contato. Se você acredita que houve um engano, por favor, entre em contato com a pessoa gestora do seu contrato.";
     
     // In-memory cache for deduplication (MessageId -> timestamp)
@@ -43,7 +45,8 @@ public class ZApiWebhookController : ControllerBase
         IMentorshipCacheService mentorshipCacheService,
         IConfiguration configuration,
         ILogger<ZApiWebhookController> logger,
-        ILogSanitizer logSanitizer)
+        ILogSanitizer logSanitizer,
+        IWebHostEnvironment environment)
     {
         _messageProcessor = messageProcessor;
         _whatsAppServiceFactory = whatsAppServiceFactory;
@@ -54,6 +57,7 @@ public class ZApiWebhookController : ControllerBase
         _configuration = configuration;
         _logger = logger;
         _logSanitizer = logSanitizer;
+        _environment = environment;
     }
 
     /// <summary>
@@ -78,6 +82,12 @@ public class ZApiWebhookController : ControllerBase
         [FromBody] ZApiWebhookDto webhook,
         [FromQuery] Guid? mentorshipId = null)
     {
+        // Log complete request details in Development environment only
+        if (_environment.IsDevelopment())
+        {
+            LogCompleteRequest(webhook);
+        }
+
         // Validate Client-Token header
         if (!Request.Headers.TryGetValue("Client-Token", out var clientTokenHeader) || 
             string.IsNullOrWhiteSpace(clientTokenHeader))
@@ -240,6 +250,51 @@ public class ZApiWebhookController : ControllerBase
             catch { /* Ignore errors */ }
             
             return BadRequest(new { success = false, message = "Error processing message" });
+        }
+    }
+
+    /// <summary>
+    /// Logs complete request details (headers, body, query params) - Development only
+    /// </summary>
+    private void LogCompleteRequest(ZApiWebhookDto? webhook = null)
+    {
+        try
+        {
+            // Serialize body from the already-deserialized object (since model binding already consumed the stream)
+            string bodyJson = webhook != null 
+                ? JsonSerializer.Serialize(webhook, new JsonSerializerOptions { WriteIndented = true })
+                : "[Body not available - model binding may have failed]";
+
+            var requestDetails = new
+            {
+                Method = Request.Method,
+                Path = Request.Path.Value,
+                QueryString = Request.QueryString.Value,
+                Headers = Request.Headers.ToDictionary(
+                    h => h.Key,
+                    h => h.Value.Count == 1 ? (object)h.Value.ToString() : h.Value.ToArray()
+                ),
+                ContentType = Request.ContentType,
+                ContentLength = Request.ContentLength,
+                Scheme = Request.Scheme,
+                Host = Request.Host.Value,
+                Protocol = Request.Protocol,
+                RemoteIpAddress = Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers["User-Agent"].ToString(),
+                Body = bodyJson
+            };
+
+            var requestJson = JsonSerializer.Serialize(requestDetails, new JsonSerializerOptions 
+            { 
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+
+            _logger.LogInformation("🔍 [DEVELOPMENT ONLY] Complete Webhook Request:\n{RequestDetails}", requestJson);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to log complete request details");
         }
     }
 
